@@ -194,7 +194,9 @@ class PlayerState extends ChangeNotifier {
           tag: MediaItem(
             id: lesson.videoId,
             title: lesson.title,
-            artUri: Uri.parse('https://pub-5576bc247f054ed182ef2c8aba07d122.r2.dev/app_icon.png'),
+            artist: 'Dëgjo',
+            album: 'Mëso Anglisht',
+            artUri: Uri.parse('https://pub-5576bc247f054ed182ef2c8aba07d122.r2.dev/icon.png'),
           ),
         ),
       );
