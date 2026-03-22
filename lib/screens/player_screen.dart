@@ -255,6 +255,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
           padding: const EdgeInsets.fromLTRB(24, 14, 24, 0),
           child: Row(
             children: [
+              Image.asset('assets/app_logo.png', width: 32, height: 32),
+              const SizedBox(width: 8),
               Text(
                 'Dëgjo',
                 style: TextStyle(

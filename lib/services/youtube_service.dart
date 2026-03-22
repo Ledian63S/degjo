@@ -36,16 +36,36 @@ class YouTubeService {
   final _yt = YoutubeExplode();
   final _httpClient = YoutubeHttpClient();
 
-  static const String playlistId = 'PLWN-brI7dUEl5tRRglCks_2LZLCdvOWTZ';
+  static const String playlistId = 'PLWN-brI7dUEkE__zj8C1z96jGPs9di2mE';
 
   Future<List<Lesson>> fetchPlaylist() async {
     final playlist = await _yt.playlists
         .getVideos(playlistId)
         .toList()
         .timeout(const Duration(seconds: 20));
+
     return playlist.asMap().entries.map((e) {
-      return Lesson(videoId: e.value.id.value, title: e.value.title, index: e.key);
+      return Lesson(
+        videoId: e.value.id.value,
+        title: _cleanTitle(e.value.title),
+        index: e.key,
+      );
     }).toList();
+  }
+
+  /// Strips repeated channel-name prefixes, leading numbers and separators.
+  String _cleanTitle(String raw) {
+    var t = raw;
+    // Remove "Mëso/Meso Anglisht" prefix (case-insensitive)
+    t = t.replaceFirst(RegExp(r'^M[eë]so\s+Anglisht\s*', caseSensitive: false), '');
+    // Remove leading numbers (e.g. "1.", "23 -", "005.")
+    t = t.replaceFirst(RegExp(r'^\d+[\s.\-–—]*'), '');
+    // Remove any remaining leading non-letter characters (punctuation, whitespace)
+    t = t.replaceFirst(RegExp(r'^[^a-zA-ZÀ-ÖØ-öø-ÿ]+'), '');
+    t = t.trim();
+    if (t.isEmpty) return raw;
+    // First letter uppercase, rest lowercase for consistency
+    return t[0].toUpperCase() + t.substring(1).toLowerCase();
   }
 
   /// Fetches stream metadata using the iOS client.

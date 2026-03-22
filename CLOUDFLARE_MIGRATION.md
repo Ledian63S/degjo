@@ -21,28 +21,31 @@ This makes the app reliable, fast, and independent of YouTube API changes.
 - Navigate to **R2 Object Storage** → **Create bucket**
 - Name it `degjo-audio`
 - Enable **Public Access** on the bucket
-- Note your public URL: `https://pub-xxxx.r2.dev/`
+- Note your public URL: `https://pub-5576bc247f054ed182ef2c8aba07d122.r2.dev/` ✓
 
 ---
 
 ### 2. Download Audio from YouTube (run once on Mac)
 
-Install `yt-dlp`:
+Install prerequisites (both required):
 ```bash
-brew install yt-dlp
+brew install yt-dlp ffmpeg
 ```
 
-Download all lessons as MP3 (audio only):
+Create output folder and download all lessons as MP3:
 ```bash
+mkdir -p ~/Desktop/degjo-lessons
+cd ~/Desktop/degjo-lessons
 yt-dlp \
   --extract-audio \
   --audio-format mp3 \
   --audio-quality 5 \
   --output "%(playlist_index)s.%(ext)s" \
-  "https://www.youtube.com/playlist?list=PLWN-brI7dUEl5tRRglCks_2LZLCdvOWTZ"
+  "https://www.youtube.com/playlist?list=PLWN-brI7dUEkE__zj8C1z96jGPs9di2mE"
 ```
 
-This creates `1.mp3`, `2.mp3`, ..., `N.mp3` in the current folder.
+This creates `1.mp3`, `2.mp3`, ..., `N.mp3` in `~/Desktop/degjo-lessons/`.
+**Note:** `ffmpeg` is required for the MP3 conversion step — install it before running.
 
 ---
 
@@ -74,12 +77,12 @@ Create a file called `playlist.json` and upload it to R2:
   {
     "index": 1,
     "title": "Lesson title here",
-    "url": "https://pub-xxxx.r2.dev/1.mp3"
+    "url": "https://pub-5576bc247f054ed182ef2c8aba07d122.r2.dev/1.mp3"
   },
   {
     "index": 2,
     "title": "Lesson title here",
-    "url": "https://pub-xxxx.r2.dev/2.mp3"
+    "url": "https://pub-5576bc247f054ed182ef2c8aba07d122.r2.dev/2.mp3"
   }
 ]
 ```
@@ -130,6 +133,6 @@ To add/remove lessons: just update `playlist.json` — no app update needed.
 ## Notes
 
 - Keep `youtube_explode_dart` in the code until R2 is fully set up and tested
-- The playlist URL currently in use: `PLWN-brI7dUEl5tRRglCks_2LZLCdvOWTZ`
-- Public R2 URL format: `https://pub-xxxx.r2.dev/filename.mp3`
-  (replace `xxxx` with your actual bucket ID from Cloudflare dashboard)
+- The playlist URL currently in use: `PLWN-brI7dUEkE__zj8C1z96jGPs9di2mE`
+- Public R2 URL: `https://pub-5576bc247f054ed182ef2c8aba07d122.r2.dev/`
+- Full audio file URL format: `https://pub-5576bc247f054ed182ef2c8aba07d122.r2.dev/1.mp3`

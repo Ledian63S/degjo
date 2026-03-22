@@ -4,15 +4,14 @@ import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:audio_session/audio_session.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:youtube_explode_dart/youtube_explode_dart.dart';
-import 'youtube_service.dart';
+import 'r2_service.dart';
 import 'voice_service.dart';
 import '../models/lesson.dart';
 
 enum AppStatus { loading, ready, error }
 
 class PlayerState extends ChangeNotifier {
-  final _youtube = YouTubeService();
+  final _r2 = R2Service();
   final _player = AudioPlayer();
   final voice = VoiceService();
 
@@ -42,13 +41,9 @@ class PlayerState extends ChangeNotifier {
   StreamSubscription? _positionSub;
   Timer? _saveTimer;
 
-  // In-memory cache of stream info (signed URLs valid for the session)
-  final Map<String, MuxedStreamInfo> _infoCache = {};
-
   Future<void> retry() async {
     status = AppStatus.loading;
     errorMessage = null;
-    _infoCache.clear();
     notifyListeners();
     await _refreshPlaylist();
   }
@@ -65,7 +60,6 @@ class PlayerState extends ChangeNotifier {
       final savedIdx = prefs.getInt('current_index') ?? 0;
       _currentIndex = savedIdx.clamp(0, lessons.length - 1);
 
-      // Restore saved position for the current lesson
       _savedPosition = Duration(
         seconds: prefs.getInt('pos_${lessons[_currentIndex].videoId}') ?? 0,
       );
@@ -78,9 +72,6 @@ class PlayerState extends ChangeNotifier {
 
       status = AppStatus.ready;
       notifyListeners();
-
-      // Pre-fetch stream info for the current lesson while refreshing playlist
-      _prefetchInfo(_currentIndex);
     }
 
     // 2. Run all independent inits in parallel
@@ -108,8 +99,7 @@ class PlayerState extends ChangeNotifier {
     final session = await AudioSession.instance;
     await session.configure(const AudioSessionConfiguration(
       avAudioSessionCategory: AVAudioSessionCategory.playback,
-      avAudioSessionCategoryOptions:
-          AVAudioSessionCategoryOptions.defaultToSpeaker,
+      avAudioSessionCategoryOptions: AVAudioSessionCategoryOptions.none,
       avAudioSessionMode: AVAudioSessionMode.defaultMode,
     ));
   }
@@ -117,9 +107,9 @@ class PlayerState extends ChangeNotifier {
   Future<void> _refreshPlaylist() async {
     final prefs = await SharedPreferences.getInstance();
     try {
-      final fresh = await _youtube.fetchPlaylist();
+      final fresh = await _r2.fetchPlaylist();
 
-      // Preserve done state from the currently loaded lessons
+      // Preserve done state
       final doneIds = {for (final l in lessons) if (l.done) l.videoId};
       for (final l in fresh) {
         if (doneIds.contains(l.videoId)) l.done = true;
@@ -127,7 +117,6 @@ class PlayerState extends ChangeNotifier {
 
       lessons = fresh;
 
-      // Only update current index if nothing is playing
       if (!_player.playing) {
         final savedIdx = prefs.getInt('current_index') ?? 0;
         _currentIndex = savedIdx.clamp(0, lessons.length - 1);
@@ -139,7 +128,6 @@ class PlayerState extends ChangeNotifier {
         if (idx >= 0) lessons[idx].done = true;
       }
 
-      // Persist for next launch
       await prefs.setStringList(
         'cached_playlist',
         fresh.map((l) => jsonEncode(l.toJson())).toList(),
@@ -150,24 +138,12 @@ class PlayerState extends ChangeNotifier {
       if (lessons.isEmpty) {
         status = AppStatus.error;
         errorMessage =
-            'Nuk u lidh me YouTube.\nKontrollo internetin dhe provo sërish.';
+            'Nuk u lidh me serverin.\nKontrollo internetin dhe provo sërish.';
         voice.speak('Gabim. Nuk u lidh me internet.');
       }
-      // If we have cached data, silently keep it shown
     }
 
     notifyListeners();
-    if (lessons.isNotEmpty) _prefetchInfo(_currentIndex);
-  }
-
-  // Kick off a background stream-info fetch so it's ready when user taps play
-  void _prefetchInfo(int index) {
-    if (index < 0 || index >= lessons.length) return;
-    final videoId = lessons[index].videoId;
-    if (_infoCache.containsKey(videoId)) return;
-    _youtube.getStreamInfo(videoId).then((info) {
-      _infoCache[videoId] = info;
-    }).catchError((_) {});
   }
 
   void _startSaveTimer() {
@@ -193,8 +169,8 @@ class PlayerState extends ChangeNotifier {
     _currentIndex = index;
     _sentenceStart = Duration.zero;
 
-    // Save immediately so the index is persisted even if loading is interrupted
-    SharedPreferences.getInstance().then((p) => p.setInt('current_index', index));
+    SharedPreferences.getInstance()
+        .then((p) => p.setInt('current_index', index));
 
     if (_speed != 1.0) {
       _speed = 1.0;
@@ -207,26 +183,16 @@ class PlayerState extends ChangeNotifier {
     try {
       await _player.stop();
 
-      final videoId = lessons[index].videoId;
-      // Use cached stream info if available, otherwise fetch
-      final info = _infoCache[videoId] ?? await _youtube.getStreamInfo(videoId);
-      _infoCache[videoId] = info;
+      final lesson = lessons[index];
+      final url = lesson.audioUrl ??
+          'https://pub-5576bc247f054ed182ef2c8aba07d122.r2.dev/${(index + 1).toString().padLeft(3, '0')}.mp3';
 
-      // iOS client URLs work natively with AVPlayer — try direct URL first
-      final url = _youtube.getDirectUrl(info);
-      try {
-        await _player.setUrl(url);
-      } catch (_) {
-        // Fall back to StreamAudioSource if direct URL fails
-        final source = _youtube.createAudioSource(info);
-        await _player.setAudioSource(source);
-      }
+      await _player.setUrl(url);
 
       if (autoPlay) {
         await _player.play();
         _sentenceStart = Duration.zero;
 
-        // Resume saved position if this is the same lesson being resumed
         if (_savedPosition > Duration.zero && index == _currentIndex) {
           await _player.seek(_savedPosition);
           _savedPosition = Duration.zero;
@@ -234,9 +200,6 @@ class PlayerState extends ChangeNotifier {
 
         _startSaveTimer();
       }
-
-      // Pre-fetch the next lesson's stream info while this one plays
-      _prefetchInfo(index + 1);
     } catch (e, st) {
       debugPrint('loadAndPlay error: $e\n$st');
       errorMessage = 'Gabim gjatë ngarkimit të mësimit.';
@@ -245,7 +208,6 @@ class PlayerState extends ChangeNotifier {
       _loading = false;
       notifyListeners();
     }
-
   }
 
   Future<void> togglePlay() async {
@@ -298,7 +260,6 @@ class PlayerState extends ChangeNotifier {
     _stopSaveTimer();
     notifyListeners();
 
-    // Auto-advance to next lesson after a short pause
     if (_currentIndex < lessons.length - 1) {
       await Future.delayed(const Duration(seconds: 2));
       voice.speak('Mësimi ${_currentIndex + 2}');
@@ -313,7 +274,6 @@ class PlayerState extends ChangeNotifier {
     _playerSub?.cancel();
     _positionSub?.cancel();
     _player.dispose();
-    _youtube.dispose();
     voice.dispose();
     super.dispose();
   }

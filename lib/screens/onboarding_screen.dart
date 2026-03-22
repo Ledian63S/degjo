@@ -249,27 +249,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                     child: Row(
                       children: [
                         // Logo
-                        Container(
-                          width: 28,
-                          height: 20,
-                          decoration: BoxDecoration(
-                            color: c.accent,
-                            borderRadius: BorderRadius.circular(5),
-                            boxShadow: [
-                              BoxShadow(
-                                color: c.accent.withValues(alpha: 0.25),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: const Center(
-                            child: CustomPaint(
-                              size: Size(12, 12),
-                              painter: _PlayTrianglePainter(),
-                            ),
-                          ),
-                        ),
+                        Image.asset('assets/app_logo.png', width: 32, height: 32),
                         const SizedBox(width: 8),
                         Text(
                           'Dëgjo',
@@ -574,25 +554,6 @@ class _StepData {
     required this.descBold,
     required this.hintText,
   });
-}
-
-// ── Play triangle logo icon ────────────────────────────────────
-
-class _PlayTrianglePainter extends CustomPainter {
-  const _PlayTrianglePainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final path = Path()
-      ..moveTo(4, 2)
-      ..lineTo(10, 6)
-      ..lineTo(4, 10)
-      ..close();
-    canvas.drawPath(path, Paint()..color = Colors.white);
-  }
-
-  @override
-  bool shouldRepaint(_PlayTrianglePainter old) => false;
 }
 
 // ── Dashed border decoration ───────────────────────────────────

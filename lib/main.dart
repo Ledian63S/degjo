@@ -60,9 +60,41 @@ class _RootScreen extends StatefulWidget {
   State<_RootScreen> createState() => _RootScreenState();
 }
 
-class _RootScreenState extends State<_RootScreen> {
-  // Show onboarding every launch (session-only flag)
+class _RootScreenState extends State<_RootScreen> with WidgetsBindingObserver {
   bool _onboardingDone = false;
+  double _overlayOpacity = 0.0;
+  Color _overlayColor = Colors.transparent;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangePlatformBrightness() {
+    final brightness =
+        WidgetsBinding.instance.platformDispatcher.platformBrightness;
+    final bgColor = brightness == Brightness.dark
+        ? const Color(0xFF0D0D0D)
+        : const Color(0xFFF0F0F0);
+
+    setState(() {
+      _overlayColor = bgColor;
+      _overlayOpacity = 1.0;
+    });
+
+    // One frame later, fade the overlay out to reveal the switched theme
+    Future.delayed(const Duration(milliseconds: 50), () {
+      if (mounted) setState(() => _overlayOpacity = 0.0);
+    });
+  }
 
   void _completeOnboarding() => setState(() => _onboardingDone = true);
 
@@ -73,6 +105,14 @@ class _RootScreenState extends State<_RootScreen> {
         const PlayerScreen(),
         if (!_onboardingDone)
           OnboardingScreen(onComplete: _completeOnboarding),
+        IgnorePointer(
+          child: AnimatedOpacity(
+            opacity: _overlayOpacity,
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeOut,
+            child: Container(color: _overlayColor),
+          ),
+        ),
       ],
     );
   }

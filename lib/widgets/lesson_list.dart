@@ -360,6 +360,11 @@ class _MarqueeTextState extends State<_MarqueeText>
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(builder: (context, constraints) {
+      if (constraints.maxWidth <= 0 || constraints.maxWidth == double.infinity) {
+        return Text(widget.text, style: widget.style, maxLines: 1,
+            overflow: TextOverflow.ellipsis);
+      }
+
       final tp = TextPainter(
         text: TextSpan(text: widget.text, style: widget.style),
         maxLines: 1,
@@ -367,7 +372,8 @@ class _MarqueeTextState extends State<_MarqueeText>
       )..layout(maxWidth: double.infinity);
 
       if (tp.width <= constraints.maxWidth) {
-        return Text(widget.text, style: widget.style, maxLines: 1);
+        return Text(widget.text, style: widget.style, maxLines: 1,
+            overflow: TextOverflow.ellipsis);
       }
 
       final overflow = tp.width - constraints.maxWidth + 16;
