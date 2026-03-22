@@ -37,8 +37,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
   DateTime _gestureStart = DateTime.now();
   static const _ghostThreshold = Duration(milliseconds: 80);
 
-  // Tap tracking
-  DateTime? _lastTapTime;
+  // Tap tracking — measure DOWN-to-DOWN to avoid triggering on natural rhythm
+  DateTime? _lastSingleTapStart; // gestureStart (DOWN time) of last successful single tap
   bool _doubleTapPending = false; // second DOWN already fired double-tap; swallow its UP
   static const _doubleTapWindow = Duration(milliseconds: 300);
   // Prevents gesture overlay from eating taps meant for UI buttons
@@ -296,7 +296,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                     onShowTutorial: widget.onShowTutorial ?? () {},
                   ).then((_) {
                     if (!mounted) return;
-                    _lastTapTime = null;
+                    _lastSingleTapStart = null;
                     _ignoreNextSingleTap = false;
                     if (_pointerStarts.isEmpty) _resetGesture();
                   });
@@ -483,12 +483,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
           _allStarts[e.pointer] = e.position;
           _pointerDownTimes[e.pointer] = DateTime.now();
 
-          // Double-tap: second DOWN within window → fire immediately, swallow UP
-          if (_lastTapTime != null &&
-              DateTime.now().difference(_lastTapTime!) < _doubleTapWindow &&
+          // Double-tap: second DOWN within 300ms of first DOWN → fire immediately
+          if (_lastSingleTapStart != null &&
+              _gestureStart.difference(_lastSingleTapStart!) < _doubleTapWindow &&
               !_ignoreNextSingleTap) {
             _doubleTapPending = true;
-            _lastTapTime = null;
+            _lastSingleTapStart = null;
             if (ps.lessons.isNotEmpty && !ps.isLoading) {
               HapticFeedback.mediumImpact();
               ps.seekTo(Duration.zero);
@@ -558,7 +558,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
             return;
           }
           if (ps.lessons.isNotEmpty && !ps.isLoading) {
-            _lastTapTime = DateTime.now();
+            _lastSingleTapStart = _gestureStart; // record DOWN time for double-tap detection
             HapticFeedback.lightImpact();
             if (ps.currentLesson != null && ps.duration == Duration.zero) {
               ps.loadAndPlay(ps.currentIndex);
