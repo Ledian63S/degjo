@@ -107,18 +107,14 @@
 
     /* ── Nav ── */
     nav {
-      position: sticky;
-      top: 0;
-      z-index: 100;
+      position: static;
       display: flex;
       align-items: center;
       justify-content: space-between;
       padding: 12px 28px;
-      background: var(--nav-bg);
-      backdrop-filter: blur(24px);
-      -webkit-backdrop-filter: blur(24px);
+      background: transparent;
       border-bottom: 1px solid var(--border);
-      transition: background var(--transition), border-color var(--transition);
+      transition: border-color var(--transition);
     }
 
     .nav-left {
