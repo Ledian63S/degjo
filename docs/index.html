@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="sq">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dëgjo — Mëso Anglisht</title>
+  <meta name="description" content="Një aplikacion audio për mësimin e anglishtes, i dizenjuar për njerëzit me shikim të dëmtuar." />
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --red:    #E8191C;
+      --red2:   #FF453A;
+      --bg:     #0D0D0D;
+      --card:   #141414;
+      --border: #222222;
+      --text:   #F0F0F0;
+      --muted:  #666666;
+      --radius: 18px;
+      --ease:   cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+      font-size: 16px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    /* ── Blobs ── */
+    .blob {
+      position: fixed;
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .blob-1 {
+      width: 600px; height: 600px;
+      top: -200px; right: -200px;
+      background: radial-gradient(circle, rgba(232,25,28,0.12) 0%, transparent 65%);
+    }
+    .blob-2 {
+      width: 480px; height: 480px;
+      bottom: -100px; left: -150px;
+      background: radial-gradient(circle, rgba(120,0,200,0.07) 0%, transparent 65%);
+    }
+
+    /* ── Nav ── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 28px;
+      background: rgba(13,13,13,0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+
+    .nav-brand img {
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
+    }
+
+    .nav-brand span {
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: var(--text);
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 28px;
+    }
+
+    .nav-links a {
+      font-size: 14px;
+      color: var(--muted);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover { color: var(--text); }
+
+    /* ── Hero ── */
+    .hero {
+      position: relative;
+      z-index: 1;
+      min-height: 100svh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 80px 24px 64px;
+    }
+
+    .hero-logo {
+      width: 100px;
+      height: 100px;
+      border-radius: 24px;
+      margin-bottom: 32px;
+      box-shadow:
+        0 0 0 1px rgba(232,25,28,0.3),
+        0 12px 48px rgba(232,25,28,0.3);
+      opacity: 0;
+      transform: translateY(20px);
+      animation: fadeUp 0.7s var(--ease) 0.1s forwards;
+    }
+
+    .hero-eyebrow {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      color: var(--red2);
+      margin-bottom: 16px;
+      opacity: 0;
+      animation: fadeUp 0.7s var(--ease) 0.2s forwards;
+    }
+
+    .hero h1 {
+      font-size: clamp(3rem, 10vw, 5.5rem);
+      font-weight: 800;
+      letter-spacing: -2px;
+      line-height: 1.05;
+      margin-bottom: 20px;
+      opacity: 0;
+      animation: fadeUp 0.7s var(--ease) 0.3s forwards;
+    }
+
+    .hero h1 em {
+      font-style: normal;
+      color: var(--red2);
+    }
+
+    .hero-sub {
+      font-size: clamp(1rem, 2.5vw, 1.2rem);
+      color: var(--muted);
+      max-width: 500px;
+      margin-bottom: 44px;
+      line-height: 1.7;
+      opacity: 0;
+      animation: fadeUp 0.7s var(--ease) 0.4s forwards;
+    }
+
+    .hero-cta {
+      opacity: 0;
+      animation: fadeUp 0.7s var(--ease) 0.5s forwards;
+    }
+
+    .btn-store {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--text);
+      color: var(--bg);
+      font-size: 15px;
+      font-weight: 600;
+      padding: 14px 28px;
+      border-radius: 50px;
+      text-decoration: none;
+      transition: opacity 0.2s, transform 0.2s;
+    }
+
+    .btn-store:hover {
+      opacity: 0.88;
+      transform: translateY(-2px);
+    }
+
+    .btn-store svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .coming-soon {
+      display: inline-block;
+      margin-top: 14px;
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: 0.5px;
+    }
+
+    /* ── Section shared ── */
+    section {
+      position: relative;
+      z-index: 1;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 96px 24px;
+    }
+
+    .section-label {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--red2);
+      margin-bottom: 14px;
+    }
+
+    section h2 {
+      font-size: clamp(1.8rem, 5vw, 2.8rem);
+      font-weight: 800;
+      letter-spacing: -1px;
+      line-height: 1.1;
+      margin-bottom: 52px;
+    }
+
+    /* ── Features ── */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+    }
+
+    .feature-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.6s var(--ease), transform 0.6s var(--ease),
+                  border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .feature-card.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .feature-card:nth-child(2) { transition-delay: 0.08s; }
+    .feature-card:nth-child(3) { transition-delay: 0.16s; }
+    .feature-card:nth-child(4) { transition-delay: 0.24s; }
+    .feature-card:nth-child(5) { transition-delay: 0.32s; }
+    .feature-card:nth-child(6) { transition-delay: 0.40s; }
+
+    .feature-card:hover {
+      border-color: rgba(232,25,28,0.3);
+      box-shadow: 0 4px 24px rgba(232,25,28,0.08);
+    }
+
+    .feature-icon {
+      width: 44px;
+      height: 44px;
+      background: rgba(232,25,28,0.1);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      margin-bottom: 18px;
+    }
+
+    .feature-card h3 {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .feature-card p {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    /* ── Gestures ── */
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+    }
+
+    .gestures-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .gesture-row {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px 22px;
+      opacity: 0;
+      transform: translateX(-16px);
+      transition: opacity 0.5s var(--ease), transform 0.5s var(--ease);
+    }
+
+    .gesture-row.visible {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    .gesture-row:nth-child(2) { transition-delay: 0.07s; }
+    .gesture-row:nth-child(3) { transition-delay: 0.14s; }
+    .gesture-row:nth-child(4) { transition-delay: 0.21s; }
+    .gesture-row:nth-child(5) { transition-delay: 0.28s; }
+
+    .gesture-tag {
+      background: rgba(232,25,28,0.12);
+      color: var(--red2);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      padding: 6px 12px;
+      border-radius: 8px;
+      white-space: nowrap;
+      min-width: 120px;
+      text-align: center;
+    }
+
+    .gesture-row p {
+      font-size: 15px;
+      color: var(--muted);
+    }
+
+    .gesture-row strong { color: var(--text); }
+
+    /* ── Story ── */
+    .story-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 56px 48px;
+      text-align: center;
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.7s var(--ease), transform 0.7s var(--ease);
+    }
+
+    .story-card.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .story-heart {
+      font-size: 3rem;
+      display: block;
+      margin-bottom: 24px;
+    }
+
+    .story-card p {
+      font-size: 1.1rem;
+      color: var(--muted);
+      line-height: 1.85;
+      max-width: 520px;
+      margin: 0 auto;
+    }
+
+    .story-card p strong { color: var(--text); }
+
+    /* ── Footer ── */
+    footer {
+      position: relative;
+      z-index: 1;
+      border-top: 1px solid var(--border);
+      padding: 36px 24px;
+      text-align: center;
+    }
+
+    footer p {
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    footer span { color: var(--red2); }
+
+    /* ── Animations ── */
+    @keyframes fadeUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      .nav-links { display: none; }
+      .story-card { padding: 36px 24px; }
+      .gesture-tag { min-width: 90px; font-size: 11px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+
+  <!-- Nav -->
+  <nav>
+    <a href="#" class="nav-brand">
+      <img src="app_logo.png" alt="Dëgjo" />
+      <span>Dëgjo</span>
+    </a>
+    <div class="nav-links">
+      <a href="#features">Veçoritë</a>
+      <a href="#gestures">Si funksionon</a>
+      <a href="https://github.com/Ledian63S/degjo">GitHub</a>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <div class="hero">
+    <img class="hero-logo" src="app_icon.png" alt="Dëgjo" />
+    <p class="hero-eyebrow">285 mësime anglisht</p>
+    <h1>Mëso anglisht<br><em>duke dëgjuar.</em></h1>
+    <p class="hero-sub">
+      Një aplikacion audio i dizenjuar për njerëzit me shikim të dëmtuar.
+      Pa ekran, pa meny — vetëm zëri dhe gjeste.
+    </p>
+    <div class="hero-cta">
+      <a href="#" class="btn-store">
+        <svg viewBox="0 0 24 24" fill="currentColor">
+          <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+        </svg>
+        App Store
+      </a>
+      <span class="coming-soon">Së shpejti i disponueshëm</span>
+    </div>
+  </div>
+
+  <!-- Features -->
+  <section id="features">
+    <p class="section-label">Veçoritë</p>
+    <h2>Gjithçka me<br>prekje dhe zë.</h2>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">🎧</div>
+        <h3>285 mësime audio</h3>
+        <p>Nga fillestar deri te niveli i mesëm. Mëso me ritmin tënd, kudo dhe kurdo.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">👆</div>
+        <h3>Kontroll me gjeste</h3>
+        <p>Luan, ndalon, kalon mësimet me gishta. Pa butona, pa meny.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔊</div>
+        <h3>Zë i gjallë</h3>
+        <p>Çdo veprim konfirmohet me audio në shqip. Asnjë veprim pa konfirmim.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">⏪</div>
+        <h3>Rimerr vendin</h3>
+        <p>Mbyll kur të duash. Kur hap sërisht, vazhdon pikërisht nga ku mbete.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🌙</div>
+        <h3>Temë automatike</h3>
+        <p>Ndjek pamjen e telefonit me animacion të butë. E ndritshme ose e errët.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">⚡</div>
+        <h3>E shpejtë e qëndrueshme</h3>
+        <p>Audio streamon nga serverët tanë. Pa YouTube, pa ndërprerje.</p>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- Gestures -->
+  <section id="gestures">
+    <p class="section-label">Si funksionon</p>
+    <h2>5 gjeste.<br>Kaq mjafton.</h2>
+    <div class="gestures-list">
+      <div class="gesture-row">
+        <div class="gesture-tag">1 gisht · Prek</div>
+        <p><strong>Luaj / Ndalo</strong> — prek ekranin kudo me një gisht</p>
+      </div>
+      <div class="gesture-row">
+        <div class="gesture-tag">2 gishta · Lart</div>
+        <p><strong>+30 sekonda</strong> — kalo përpara 30 sekonda</p>
+      </div>
+      <div class="gesture-row">
+        <div class="gesture-tag">2 gishta · Poshtë</div>
+        <p><strong>−30 sekonda</strong> — kthehu 30 sekonda prapa</p>
+      </div>
+      <div class="gesture-row">
+        <div class="gesture-tag">2 gishta · Anash</div>
+        <p><strong>Ndrysho mësimin</strong> — rrëshqit majtas ose djathtas</p>
+      </div>
+      <div class="gesture-row">
+        <div class="gesture-tag">3 gishta · Prek</div>
+        <p><strong>Kalo te mësimi</strong> — zgjedh numrin me zë</p>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- Story -->
+  <section>
+    <div class="story-card">
+      <span class="story-heart">❤️</span>
+      <p>
+        Ky aplikacion u krijua nga një bir për <strong>babain e tij</strong>.<br><br>
+        Sepse mësimi nuk duhet të ketë kufij —<br>as mosha, as shikimi.
+      </p>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <p>Bërë me <span>♥</span> &nbsp;·&nbsp; Dëgjo &copy; 2026</p>
+  </footer>
+
+  <script>
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) e.target.classList.add('visible');
+      });
+    }, { threshold: 0.1 });
+
+    document.querySelectorAll('.feature-card, .gesture-row, .story-card')
+      .forEach(el => observer.observe(el));
+  </script>
+
+</body>
+</html>
