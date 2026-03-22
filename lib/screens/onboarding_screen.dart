@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -18,6 +19,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   late AnimationController _flashCtrl;
   late AnimationController _gestureAnimCtrl;
   late Animation<double> _gestureAnim;
+  late AnimationController _lrAnimCtrl; // separate controller for horizontal oscillation
 
   // Per-pointer gesture tracking (same approach as player_screen)
   final Map<int, Offset> _pointerStarts = {};
@@ -80,18 +82,24 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     );
     _gestureAnimCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1400),
+      duration: const Duration(milliseconds: 900),
     )..repeat(reverse: true);
     _gestureAnim = CurvedAnimation(
       parent: _gestureAnimCtrl,
       curve: Curves.easeInOut,
     );
+    // Full-cycle controller for left↔right oscillation (no reverse)
+    _lrAnimCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1800),
+    )..repeat();
   }
 
   @override
   void dispose() {
     _flashCtrl.dispose();
     _gestureAnimCtrl.dispose();
+    _lrAnimCtrl.dispose();
     super.dispose();
   }
 
@@ -327,7 +335,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                         duration: const Duration(milliseconds: 300),
                         child: AnimatedBuilder(
                           key: ValueKey(_step),
-                          animation: _gestureAnim,
+                          animation: Listenable.merge([_gestureAnim, _lrAnimCtrl]),
                           builder: (context, _) {
                             return Container(
                               width: 160,
@@ -344,9 +352,11 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                                   width: 1.5,
                                 ),
                               ),
-                              child: Center(
-                                child: _buildAnimatedIcon(
-                                    _step, _gestureAnim.value),
+                              child: ClipOval(
+                                child: Center(
+                                  child: _buildAnimatedIcon(
+                                      _step, _gestureAnim.value),
+                                ),
                               ),
                             );
                           },
@@ -358,52 +368,65 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                   // Info area
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 36),
-                    child: Column(
-                      children: [
-                        Text(
-                          step.stepLabel,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: Color(0xFFFF0000),
-                            letterSpacing: 1.5,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          step.gestureName,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 26,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: -0.7,
-                            height: 1.2,
-                            color: Color(0xFF0F0F0F),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        RichText(
-                          textAlign: TextAlign.center,
-                          text: TextSpan(
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 350),
+                      transitionBuilder: (child, animation) {
+                        final offsetAnimation = Tween<Offset>(
+                          begin: const Offset(1.0, 0.0),
+                          end: Offset.zero,
+                        ).animate(CurvedAnimation(
+                            parent: animation, curve: Curves.easeOutCubic));
+                        return SlideTransition(
+                            position: offsetAnimation, child: child);
+                      },
+                      child: Column(
+                        key: ValueKey(_step),
+                        children: [
+                          Text(
+                            step.stepLabel,
                             style: const TextStyle(
-                              fontSize: 16,
-                              color: Color(0xFFAAAAAA),
-                              height: 1.5,
-                              fontFamily: 'Roboto',
+                              fontSize: 11,
+                              color: Color(0xFFFF0000),
+                              letterSpacing: 1.5,
+                              fontWeight: FontWeight.w600,
                             ),
-                            children: [
-                              TextSpan(text: '${step.descPre} '),
-                              TextSpan(
-                                text: step.descBold,
-                                style: const TextStyle(
-                                  color: Color(0xFF0F0F0F),
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 10),
+                          Text(
+                            step.gestureName,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 26,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: -0.7,
+                              height: 1.2,
+                              color: Color(0xFF0F0F0F),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          RichText(
+                            textAlign: TextAlign.center,
+                            text: TextSpan(
+                              style: const TextStyle(
+                                fontSize: 16,
+                                color: Color(0xFFAAAAAA),
+                                height: 1.5,
+                                fontFamily: 'Roboto',
+                              ),
+                              children: [
+                                TextSpan(text: '${step.descPre} '),
+                                TextSpan(
+                                  text: step.descBold,
+                                  style: const TextStyle(
+                                    color: Color(0xFF0F0F0F),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
 
@@ -459,7 +482,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     );
   }
 
-  /// Returns the icon for [step] with a movement/scale animation driven by [v] (0→1).
+  /// Returns the animated SVG icon for [step].
+  /// [v] is the main animation value (0→1, easeInOut, reverses).
+  /// For horizontal, [_lrAnimCtrl.value] drives a full sin oscillation.
   Widget _buildAnimatedIcon(int step, double v) {
     const assets = [
       'assets/gestures/gesture_tap.svg',
@@ -469,25 +494,33 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       'assets/gestures/gesture_three_tap.svg',
     ];
 
-    final icon = SvgPicture.asset(
-      assets[step],
-      width: 110,
-      height: 140,
-    );
+    final svg = SvgPicture.asset(assets[step], width: 70, height: 70);
 
     switch (step) {
-      case 0:
-        return Transform.scale(scale: 0.88 + v * 0.12, child: icon);
-      case 1:
-        return Transform.translate(offset: Offset(0, -v * 11), child: icon);
-      case 2:
-        return Transform.translate(offset: Offset(0, v * 11), child: icon);
-      case 3:
-        return Transform.translate(offset: Offset(v * 11, 0), child: icon);
-      case 4:
-        return Transform.scale(scale: 0.88 + v * 0.12, child: icon);
+      case 0: // tap — ripple pulse outward
+        return Transform.scale(scale: 1.0 + v * 0.22, child: svg);
+
+      case 1: // swipe up — slides up with slight fade
+        return Opacity(
+          opacity: 1.0 - v * 0.25,
+          child: Transform.translate(offset: Offset(0, -v * 38), child: svg),
+        );
+
+      case 2: // swipe down — slides down with slight fade
+        return Opacity(
+          opacity: 1.0 - v * 0.25,
+          child: Transform.translate(offset: Offset(0, v * 38), child: svg),
+        );
+
+      case 3: // horizontal — smooth left ↔ right oscillation via sin
+        final dx = math.sin(_lrAnimCtrl.value * 2 * math.pi) * 32;
+        return Transform.translate(offset: Offset(dx, 0), child: svg);
+
+      case 4: // 3-finger tap — ripple pulse outward
+        return Transform.scale(scale: 1.0 + v * 0.22, child: svg);
+
       default:
-        return icon;
+        return svg;
     }
   }
 

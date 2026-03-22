@@ -56,6 +56,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 _buildHeader(ps),
                 WaveformWidget(
                   progress: _progress(ps),
+                  isPlaying: ps.isPlaying,
                   lessonLabel: ps.currentLesson != null
                       ? 'Mësimi ${ps.currentIndex + 1}'
                       : '',
@@ -240,27 +241,49 @@ class _PlayerScreenState extends State<PlayerScreen> {
     final counter = ps.lessons.isNotEmpty
         ? '${ps.currentIndex + 1} / ${ps.lessons.length}'
         : '';
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 14, 24, 0),
-      child: Row(
-        children: [
-            const Text(
-            'Dëgjo',
-            style: TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w700,
-              letterSpacing: -0.5,
-              color: Color(0xFF0F0F0F),
-            ),
+    final doneLessons = ps.lessons.where((l) => l.done).length;
+    final totalLessons = ps.lessons.length;
+    final completionProgress =
+        totalLessons > 0 ? doneLessons / totalLessons : 0.0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(24, 14, 24, 0),
+          child: Row(
+            children: [
+              const Text(
+                'Dëgjo',
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.5,
+                  color: Color(0xFF0F0F0F),
+                ),
+              ),
+              const Spacer(),
+              if (counter.isNotEmpty)
+                Text(
+                  counter,
+                  style: const TextStyle(fontSize: 12, color: Color(0xFFAAAAAA)),
+                ),
+            ],
           ),
-          const Spacer(),
-          if (counter.isNotEmpty)
-            Text(
-              counter,
-              style: const TextStyle(fontSize: 12, color: Color(0xFFAAAAAA)),
-            ),
+        ),
+        if (totalLessons > 0) ...[
+          const SizedBox(height: 6),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              return Container(
+                height: 2,
+                width: constraints.maxWidth * completionProgress,
+                color: const Color(0xFFFF0000),
+              );
+            },
+          ),
         ],
-      ),
+      ],
     );
   }
 
@@ -333,6 +356,23 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 style: const TextStyle(
                     fontSize: 12, color: Color(0xFFAAAAAA)),
               ),
+              if (ps.speed != 1.0)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 7, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF0F0),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '${ps.speed}x',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: Color(0xFFFF0000),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
               Text(
                 _fmtDuration(dur),
                 style: const TextStyle(
@@ -445,9 +485,25 @@ class _PlayerScreenState extends State<PlayerScreen> {
             if (ps.currentLesson != null && ps.duration == Duration.zero) {
               ps.loadAndPlay(ps.currentIndex);
             } else {
+              final wasPlaying = ps.isPlaying;
               ps.togglePlay();
+              ps.voice.speak(wasPlaying ? 'Ndalo' : 'Duke luajtur');
             }
           }
+          _resetGesture();
+          return;
+        }
+
+        // 2-finger tap → cycle speed
+        if (count == 2 && !anyMoved && elapsed < _tapMax) {
+          HapticFeedback.mediumImpact();
+          ps.cycleSpeed();
+          final speedStr = ps.speed == 1.0
+              ? 'normale'
+              : ps.speed == 1.5
+                  ? 'shpejt'
+                  : 'ngadalë';
+          ps.voice.speak('Shpejtësia $speedStr');
           _resetGesture();
           return;
         }
@@ -457,14 +513,24 @@ class _PlayerScreenState extends State<PlayerScreen> {
           if (absDx > _swipeThreshold && absDx > absDy) {
             // Horizontal: change lesson
             HapticFeedback.mediumImpact();
-            avgDx > 0 ? ps.nextLesson() : ps.prevLesson();
+            if (avgDx > 0) {
+              ps.nextLesson();
+            } else {
+              ps.prevLesson();
+            }
+            Future.microtask(() => ps.voice.speak(
+                'Mësimi ${ps.currentIndex + 1}: ${ps.currentLesson?.title ?? ''}'));
           } else if (absDy > _swipeThreshold && absDy > absDx) {
             // Vertical: seek ±30 seconds
             HapticFeedback.selectionClick();
             final newPos = avgDy < 0
                 ? ps.position + _seekAmount   // swipe up → forward
                 : ps.position - _seekAmount;  // swipe down → back
-            ps.seekTo(newPos.isNegative ? Duration.zero : newPos);
+            final clampedPos = newPos.isNegative ? Duration.zero : newPos;
+            ps.seekTo(clampedPos);
+            final mins = clampedPos.inMinutes;
+            final secs = clampedPos.inSeconds % 60;
+            ps.voice.speak(secs == 0 ? '$mins minuta' : '$mins minuta $secs sekonda');
           }
           _resetGesture();
           return;

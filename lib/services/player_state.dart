@@ -36,9 +36,11 @@ class PlayerState extends ChangeNotifier {
   bool get isLoading => _loading;
 
   Duration _sentenceStart = Duration.zero;
+  Duration _savedPosition = Duration.zero;
 
   StreamSubscription? _playerSub;
   StreamSubscription? _positionSub;
+  Timer? _saveTimer;
 
   // In-memory cache of stream info (signed URLs valid for the session)
   final Map<String, MuxedStreamInfo> _infoCache = {};
@@ -62,6 +64,11 @@ class PlayerState extends ChangeNotifier {
 
       final savedIdx = prefs.getInt('current_index') ?? 0;
       _currentIndex = savedIdx.clamp(0, lessons.length - 1);
+
+      // Restore saved position for the current lesson
+      _savedPosition = Duration(
+        seconds: prefs.getInt('pos_${lessons[_currentIndex].videoId}') ?? 0,
+      );
 
       final doneList = prefs.getStringList('done_lessons') ?? [];
       for (final id in doneList) {
@@ -89,6 +96,12 @@ class PlayerState extends ChangeNotifier {
       notifyListeners();
     });
     _positionSub = _player.positionStream.listen((_) => notifyListeners());
+
+    // 4. Announce current lesson on app open
+    if (lessons.isNotEmpty) {
+      final lesson = lessons[_currentIndex];
+      voice.speak('Mësimi ${_currentIndex + 1}: ${lesson.title}');
+    }
   }
 
   Future<void> _configureAudioSession() async {
@@ -138,6 +151,7 @@ class PlayerState extends ChangeNotifier {
         status = AppStatus.error;
         errorMessage =
             'Nuk u lidh me YouTube.\nKontrollo internetin dhe provo sërish.';
+        voice.speak('Gabim. Nuk u lidh me internet.');
       }
       // If we have cached data, silently keep it shown
     }
@@ -156,11 +170,31 @@ class PlayerState extends ChangeNotifier {
     }).catchError((_) {});
   }
 
+  void _startSaveTimer() {
+    _saveTimer?.cancel();
+    _saveTimer = Timer.periodic(const Duration(seconds: 5), (_) async {
+      if (currentLesson == null) return;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(
+        'pos_${currentLesson!.videoId}',
+        _player.position.inSeconds,
+      );
+    });
+  }
+
+  void _stopSaveTimer() {
+    _saveTimer?.cancel();
+    _saveTimer = null;
+  }
+
   Future<void> loadAndPlay(int index, {bool autoPlay = true}) async {
     if (lessons.isEmpty) return;
     index = index.clamp(0, lessons.length - 1);
     _currentIndex = index;
     _sentenceStart = Duration.zero;
+
+    // Save immediately so the index is persisted even if loading is interrupted
+    SharedPreferences.getInstance().then((p) => p.setInt('current_index', index));
 
     if (_speed != 1.0) {
       _speed = 1.0;
@@ -191,6 +225,14 @@ class PlayerState extends ChangeNotifier {
       if (autoPlay) {
         await _player.play();
         _sentenceStart = Duration.zero;
+
+        // Resume saved position if this is the same lesson being resumed
+        if (_savedPosition > Duration.zero && index == _currentIndex) {
+          await _player.seek(_savedPosition);
+          _savedPosition = Duration.zero;
+        }
+
+        _startSaveTimer();
       }
 
       // Pre-fetch the next lesson's stream info while this one plays
@@ -198,21 +240,22 @@ class PlayerState extends ChangeNotifier {
     } catch (e, st) {
       debugPrint('loadAndPlay error: $e\n$st');
       errorMessage = 'Gabim gjatë ngarkimit të mësimit.';
+      voice.speak('Gabim gjatë ngarkimit.');
     } finally {
       _loading = false;
       notifyListeners();
     }
 
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('current_index', index);
   }
 
   Future<void> togglePlay() async {
     if (_player.playing) {
       await _player.pause();
+      _stopSaveTimer();
     } else {
       _sentenceStart = _player.position;
       await _player.play();
+      _startSaveTimer();
     }
   }
 
@@ -248,14 +291,25 @@ class PlayerState extends ChangeNotifier {
     if (currentLesson != null) {
       currentLesson!.done = true;
       final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('pos_${currentLesson!.videoId}');
       final done = lessons.where((l) => l.done).map((l) => l.videoId).toList();
       await prefs.setStringList('done_lessons', done);
     }
+    _stopSaveTimer();
     notifyListeners();
+
+    // Auto-advance to next lesson after a short pause
+    if (_currentIndex < lessons.length - 1) {
+      await Future.delayed(const Duration(seconds: 2));
+      voice.speak('Mësimi ${_currentIndex + 2}');
+      await Future.delayed(const Duration(milliseconds: 1200));
+      await loadAndPlay(_currentIndex + 1);
+    }
   }
 
   @override
   void dispose() {
+    _saveTimer?.cancel();
     _playerSub?.cancel();
     _positionSub?.cancel();
     _player.dispose();

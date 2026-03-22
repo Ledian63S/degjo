@@ -123,7 +123,7 @@ class _LessonRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: isCurrent ? const Color(0xFFFFF8F8) : Colors.white,
+      color: isCurrent ? const Color(0xFFFFF0F0) : Colors.white,
       child: Column(
         children: [
           Container(height: 0.5, color: const Color(0xFFF5F5F5)),
@@ -149,9 +149,9 @@ class _LessonRow extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 14),
-                  // 3px vertical accent bar
+                  // 5px vertical accent bar
                   Container(
-                    width: 3,
+                    width: 5,
                     height: 36,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(3),

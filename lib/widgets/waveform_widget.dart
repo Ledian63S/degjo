@@ -4,6 +4,7 @@ import 'package:flutter/scheduler.dart';
 
 class WaveformWidget extends StatefulWidget {
   final double progress;
+  final bool isPlaying;
   final String lessonLabel;
   final String lessonTitle;
   final String timeLabel;
@@ -11,6 +12,7 @@ class WaveformWidget extends StatefulWidget {
   const WaveformWidget({
     super.key,
     required this.progress,
+    required this.isPlaying,
     required this.lessonLabel,
     required this.lessonTitle,
     required this.timeLabel,
@@ -37,7 +39,9 @@ class _WaveformWidgetState extends State<WaveformWidget>
     final delta = _lastMs == null ? 0 : ms - _lastMs!;
     _lastMs = ms;
     // 0.028 per frame at 60 fps ≈ 0.028 / 16.67 ms per ms
-    setState(() => _phase += delta * 0.00168);
+    // When not playing, slow phase accumulation to 15% to appear nearly still
+    final multiplier = widget.isPlaying ? 1.0 : 0.15;
+    setState(() => _phase += delta * 0.00168 * multiplier);
   }
 
   @override
@@ -59,6 +63,7 @@ class _WaveformWidgetState extends State<WaveformWidget>
               painter: _WaveformPainter(
                 progress: widget.progress,
                 phase: _phase,
+                isIdle: !widget.isPlaying && widget.progress == 0.0,
               ),
             ),
           ),
@@ -115,8 +120,13 @@ class _WaveformWidgetState extends State<WaveformWidget>
 class _WaveformPainter extends CustomPainter {
   final double progress;
   final double phase;
+  final bool isIdle;
 
-  const _WaveformPainter({required this.progress, required this.phase});
+  const _WaveformPainter({
+    required this.progress,
+    required this.phase,
+    required this.isIdle,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -128,24 +138,34 @@ class _WaveformPainter extends CustomPainter {
     for (int i = 0; i < bars; i++) {
       final p = i / bars;
 
-      // Exact wave formula from HTML design
-      final wave = math.sin(i * 0.22 + phase) * 0.42 +
-          math.sin(i * 0.41 + phase * 1.6) * 0.28 +
-          math.sin(i * 0.09 + phase * 0.55) * 0.18 +
-          math.sin(i * 0.67 + phase * 2.4) * 0.12;
+      double bh;
+      double alpha;
 
-      final env =
-          math.pow(math.sin(p * math.pi), 0.6).toDouble() * 0.85 + 0.15;
-      final bh = math.max(3.0, (wave + 1) * 0.5 * h * 0.82 * env);
+      if (isIdle) {
+        // Flat line effect: all bars at minimum height
+        bh = 3.0;
+        alpha = 0.5;
+      } else {
+        // Exact wave formula from HTML design
+        final wave = math.sin(i * 0.22 + phase) * 0.42 +
+            math.sin(i * 0.41 + phase * 1.6) * 0.28 +
+            math.sin(i * 0.09 + phase * 0.55) * 0.18 +
+            math.sin(i * 0.67 + phase * 2.4) * 0.12;
+
+        final env =
+            math.pow(math.sin(p * math.pi), 0.6).toDouble() * 0.85 + 0.15;
+        bh = math.max(3.0, (wave + 1) * 0.5 * h * 0.82 * env);
+
+        final isPlayed = p < progress;
+        alpha = isPlayed
+            ? (0.6 + 0.4 * ((wave + 1) / 2)).clamp(0.0, 1.0)
+            : (0.5 + 0.3 * ((wave + 1) / 2)).clamp(0.0, 1.0);
+      }
 
       final x = i * (bw + gap);
       final by = (h - bh) / 2;
 
-      final isPlayed = p < progress;
-      final alpha = isPlayed
-          ? (0.6 + 0.4 * ((wave + 1) / 2)).clamp(0.0, 1.0)
-          : (0.5 + 0.3 * ((wave + 1) / 2)).clamp(0.0, 1.0);
-
+      final isPlayed = !isIdle && p < progress;
       final color = isPlayed
           ? Color.fromRGBO(255, 0, 0, alpha)
           : Color.fromRGBO(224, 224, 224, alpha);
@@ -164,5 +184,5 @@ class _WaveformPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_WaveformPainter old) =>
-      old.progress != progress || old.phase != phase;
+      old.progress != progress || old.phase != phase || old.isIdle != isIdle;
 }

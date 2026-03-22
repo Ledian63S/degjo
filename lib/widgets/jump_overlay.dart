@@ -77,6 +77,11 @@ class _JumpOverlayState extends State<JumpOverlay> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                const Icon(
+                  Icons.keyboard_arrow_up_rounded,
+                  color: Color(0xFFDDDDDD),
+                  size: 28,
+                ),
                 Text(
                   '$_target',
                   style: const TextStyle(
