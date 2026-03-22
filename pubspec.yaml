@@ -39,6 +39,7 @@ dependencies:
   provider: ^6.1.2
   flutter_svg: ^2.0.10+1
   http: ^1.2.0
+  wakelock_plus: ^1.0.1
 
 dev_dependencies:
   flutter_test:
@@ -59,6 +60,7 @@ flutter:
 
   assets:
     - assets/gestures/
+    - assets/theme/
     - assets/app_icon.png
     - assets/app_logo.png
 

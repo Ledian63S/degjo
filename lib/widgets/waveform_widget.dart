@@ -1,199 +1,195 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
-import '../theme/degjo_colors.dart';
 
 class WaveformWidget extends StatefulWidget {
-  final double progress;
-  final bool isPlaying;
-  final String lessonLabel;
-  final String lessonTitle;
-  final String timeLabel;
+  final double played; // 0.0–1.0
 
   const WaveformWidget({
     super.key,
-    required this.progress,
-    required this.isPlaying,
-    required this.lessonLabel,
-    required this.lessonTitle,
-    required this.timeLabel,
+    required this.played,
   });
 
   @override
   State<WaveformWidget> createState() => _WaveformWidgetState();
 }
 
+// ── Bubble data ──────────────────────────────────────────────────
+
+class _Bubble {
+  double x;
+  double y;
+  final double radius;
+  final double speed;
+  double alpha;
+  double wobblePhase;
+
+  _Bubble({
+    required this.x,
+    required this.y,
+    required this.radius,
+    required this.speed,
+    required this.alpha,
+    required this.wobblePhase,
+  });
+}
+
+// ── State ────────────────────────────────────────────────────────
+
 class _WaveformWidgetState extends State<WaveformWidget>
     with SingleTickerProviderStateMixin {
-  late Ticker _ticker;
+  late AnimationController _ctrl;
   double _phase = 0;
-  int? _lastMs;
+  final _bubbles = <_Bubble>[];
+  final _rand = math.Random();
+  double _canvasWidth = 0;
+  static const double _height = 150;
 
   @override
   void initState() {
     super.initState();
-    _ticker = createTicker(_onTick)..start();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 1),
+    )
+      ..repeat()
+      ..addListener(_onTick);
   }
 
-  void _onTick(Duration elapsed) {
-    final ms = elapsed.inMilliseconds;
-    final delta = _lastMs == null ? 0 : ms - _lastMs!;
-    _lastMs = ms;
-    // 0.028 per frame at 60 fps ≈ 0.028 / 16.67 ms per ms
-    // When not playing, slow phase accumulation to 15% to appear nearly still
-    final multiplier = widget.isPlaying ? 1.0 : 0.15;
-    setState(() => _phase += delta * 0.00168 * multiplier);
+  void _onTick() {
+    _phase += 0.028;
+
+    if (_canvasWidth > 0 && _rand.nextDouble() < 0.12) {
+      _bubbles.add(_Bubble(
+        x: _rand.nextDouble() * _canvasWidth,
+        y: _height / 2,
+        radius: 2 + _rand.nextDouble() * 5,
+        speed: 0.18 + _rand.nextDouble() * 0.28,
+        alpha: 0.55 + _rand.nextDouble() * 0.30,
+        wobblePhase: _rand.nextDouble() * math.pi * 2,
+      ));
+    }
+
+    _bubbles.removeWhere((b) {
+      b.y -= b.speed;
+      b.alpha -= 0.006;
+      b.x += math.sin(b.wobblePhase) * 0.3;
+      b.wobblePhase += 0.08;
+      return b.y < 0 || b.alpha <= 0;
+    });
+
+    setState(() {});
   }
 
   @override
   void dispose() {
-    _ticker.dispose();
+    _ctrl.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final c = DegjoColors.of(context);
     return SizedBox(
       width: double.infinity,
-      height: 140,
-      child: Stack(
-        children: [
-          // Waveform bars
-          Positioned.fill(
-            child: CustomPaint(
-              painter: _WaveformPainter(
-                progress: widget.progress,
-                phase: _phase,
-                isIdle: !widget.isPlaying && widget.progress == 0.0,
-                accentColor: c.accent,
-                mutedColor: c.separator,
-              ),
-            ),
+      height: _height,
+      child: LayoutBuilder(builder: (ctx, box) {
+        _canvasWidth = box.maxWidth;
+        return CustomPaint(
+          painter: _WavePainter(
+            played: widget.played,
+            phase: _phase,
+            bubbles: List.unmodifiable(_bubbles),
+            canvasHeight: _height,
           ),
-          // Floating overlay: lesson label + title + time
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 28),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (widget.lessonLabel.isNotEmpty)
-                    Text(
-                      widget.lessonLabel,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: c.accent,
-                        letterSpacing: 1.5,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  const SizedBox(height: 4),
-                  Text(
-                    widget.lessonTitle,
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -0.4,
-                      color: c.text,
-                      height: 1.2,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  if (widget.timeLabel.isNotEmpty)
-                    Text(
-                      widget.timeLabel,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: c.muted,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
+        );
+      }),
     );
   }
 }
 
-class _WaveformPainter extends CustomPainter {
-  final double progress;
-  final double phase;
-  final bool isIdle;
-  final Color accentColor;
-  final Color mutedColor;
+// ── Wave + bubble painter ────────────────────────────────────────
 
-  const _WaveformPainter({
-    required this.progress,
+class _WavePainter extends CustomPainter {
+  final double played;
+  final double phase;
+  final List<_Bubble> bubbles;
+  final double canvasHeight;
+
+  static const _red = Color(0xFFFF0000);
+  static const _grey = Color(0xFFE0E0E0);
+
+  const _WavePainter({
+    required this.played,
     required this.phase,
-    required this.isIdle,
-    required this.accentColor,
-    required this.mutedColor,
+    required this.bubbles,
+    required this.canvasHeight,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
-    const bars = 90;
-    const gap = 1.8;
-    final bw = (size.width - gap * (bars - 1)) / bars;
+    final w = size.width;
     final h = size.height;
+    final centerY = h / 2;
+    final playedX = played * w;
+
+    // ── Layer 1: mirrored bars ──────────────────────────────────
+    const bars = 70;
+    const gap = 1.8;
+    final bw = (w - gap * (bars - 1)) / bars;
 
     for (int i = 0; i < bars; i++) {
       final p = i / bars;
-
-      double bh;
-      double alpha;
-
-      if (isIdle) {
-        // Flat line effect: all bars at minimum height
-        bh = 3.0;
-        alpha = 0.5;
-      } else {
-        // Exact wave formula from HTML design
-        final wave = math.sin(i * 0.22 + phase) * 0.42 +
-            math.sin(i * 0.41 + phase * 1.6) * 0.28 +
-            math.sin(i * 0.09 + phase * 0.55) * 0.18 +
-            math.sin(i * 0.67 + phase * 2.4) * 0.12;
-
-        final env =
-            math.pow(math.sin(p * math.pi), 0.6).toDouble() * 0.85 + 0.15;
-        bh = math.max(3.0, (wave + 1) * 0.5 * h * 0.82 * env);
-
-        final isPlayed = p < progress;
-        alpha = isPlayed
-            ? (0.6 + 0.4 * ((wave + 1) / 2)).clamp(0.0, 1.0)
-            : (0.5 + 0.3 * ((wave + 1) / 2)).clamp(0.0, 1.0);
-      }
-
       final x = i * (bw + gap);
-      final by = (h - bh) / 2;
+      final isPlayed = (x + bw / 2) < playedX;
+      final color = isPlayed ? _red : _grey;
 
-      final isPlayed = !isIdle && p < progress;
-      final baseColor = isPlayed ? accentColor : mutedColor;
-      final color = baseColor.withOpacity(alpha);
+      final wave = math.sin(i * 0.22 + phase) * 0.40 +
+          math.sin(i * 0.41 + phase * 1.6) * 0.26 +
+          math.sin(i * 0.09 + phase * 0.55) * 0.18 +
+          math.sin(i * 0.67 + phase * 2.4) * 0.12;
 
+      final env =
+          math.pow(math.sin(p * math.pi), 0.6).toDouble() * 0.82 + 0.18;
+      final topH = math.max(2.0, (wave + 1) * 0.5 * (h / 2) * 0.85 * env);
+      final botH = topH * 0.5;
+
+      // Top half — grows upward from center, top corners rounded
       canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(x, by, bw, bh),
-          const Radius.circular(1.5),
+        RRect.fromRectAndCorners(
+          Rect.fromLTWH(x, centerY - topH, bw, topH),
+          topLeft: const Radius.circular(1),
+          topRight: const Radius.circular(1),
         ),
         Paint()
-          ..color = color
-          ..style = PaintingStyle.fill,
+          ..color =
+              color.withOpacity(isPlayed ? 0.45 : 0.22),
+      );
+
+      // Bottom mirror — grows downward, bottom corners rounded
+      canvas.drawRRect(
+        RRect.fromRectAndCorners(
+          Rect.fromLTWH(x, centerY, bw, botH),
+          bottomLeft: const Radius.circular(1),
+          bottomRight: const Radius.circular(1),
+        ),
+        Paint()
+          ..color =
+              color.withOpacity(isPlayed ? 0.20 : 0.10),
+      );
+    }
+
+    // ── Layer 2: bubbles ────────────────────────────────────────
+    for (final b in bubbles) {
+      final isLeft = b.x < playedX;
+      final alpha = (isLeft ? b.alpha * 0.9 : b.alpha * 0.5).clamp(0.0, 1.0);
+      canvas.drawCircle(
+        Offset(b.x, b.y),
+        b.radius,
+        Paint()..color = (isLeft ? _red : _grey).withOpacity(alpha),
       );
     }
   }
 
   @override
-  bool shouldRepaint(_WaveformPainter old) =>
-      old.progress != progress ||
-      old.phase != phase ||
-      old.isIdle != isIdle ||
-      old.accentColor != accentColor ||
-      old.mutedColor != mutedColor;
+  bool shouldRepaint(_WavePainter old) => true;
 }
+

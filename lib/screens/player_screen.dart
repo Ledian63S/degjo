@@ -1,15 +1,20 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import '../services/player_state.dart';
 import '../widgets/lesson_list.dart';
 import '../widgets/jump_overlay.dart';
 import '../widgets/waveform_widget.dart';
+import '../widgets/bubble_progress_bar.dart';
 import '../theme/degjo_colors.dart';
+import 'settings_screen.dart';
 
 class PlayerScreen extends StatefulWidget {
   final VoidCallback? onShowTutorial;
-  const PlayerScreen({super.key, this.onShowTutorial});
+  final bool gesturesEnabled;
+  const PlayerScreen({super.key, this.onShowTutorial, this.gesturesEnabled = true});
 
   @override
   State<PlayerScreen> createState() => _PlayerScreenState();
@@ -17,6 +22,10 @@ class PlayerScreen extends StatefulWidget {
 
 class _PlayerScreenState extends State<PlayerScreen> {
   bool _showJump = false;
+
+  // Gesture hint
+  String _gestureHint = '';
+  Timer? _hintTimer;
 
   // Gesture tracking — per-pointer maps so multi-touch works correctly
   final Map<int, Offset> _pointerStarts = {};
@@ -26,9 +35,38 @@ class _PlayerScreenState extends State<PlayerScreen> {
   int _maxPointers = 0;
   DateTime _gestureStart = DateTime.now();
 
+  // Tap tracking
+  DateTime? _lastTapTime;
+  Timer? _singleTapTimer;
+  static const _doubleTapWindow = Duration(milliseconds: 300);
+  // Prevents gesture overlay from eating taps meant for UI buttons
+  bool _ignoreNextSingleTap = false;
+
   static const double _swipeThreshold = 40;
   static const Duration _tapMax = Duration(milliseconds: 400);
   static const Duration _seekAmount = Duration(seconds: 30);
+
+  @override
+  void initState() {
+    super.initState();
+    WakelockPlus.enable();
+  }
+
+  @override
+  void dispose() {
+    _hintTimer?.cancel();
+    _singleTapTimer?.cancel();
+    WakelockPlus.disable();
+    super.dispose();
+  }
+
+  void _showHint(String hint) {
+    _hintTimer?.cancel();
+    setState(() => _gestureHint = hint);
+    _hintTimer = Timer(const Duration(milliseconds: 1100), () {
+      if (mounted) setState(() => _gestureHint = '');
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -57,16 +95,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
             child: Column(
               children: [
                 _buildHeader(ps, c),
-                WaveformWidget(
-                  progress: _progress(ps),
-                  isPlaying: ps.isPlaying,
-                  lessonLabel: ps.currentLesson != null
-                      ? 'Mësimi ${ps.currentIndex + 1}'
-                      : '',
-                  lessonTitle:
-                      ps.currentLesson?.title ?? 'Duke ngarkuar...',
-                  timeLabel: _timeLabel(ps),
-                ),
+                WaveformWidget(played: _progress(ps)),
+                _buildHintArea(c),
+                _buildLessonInfo(ps, c),
                 _buildProgressBar(ps, c),
                 Expanded(child: _buildWhiteCard(ps, c)),
               ],
@@ -74,7 +105,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
           ),
 
           // ── Gesture overlay ───────────────────────────────────
-          Positioned.fill(child: _buildGestureOverlay(ps)),
+          if (widget.gesturesEnabled)
+            Positioned.fill(child: _buildGestureOverlay(ps)),
 
           // ── Jump overlay ──────────────────────────────────────
           if (_showJump)
@@ -93,7 +125,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 onAnnounce: (n) => ps.voice.speak('$n'),
               ),
             ),
-
 
           // ── Per-lesson error banner ───────────────────────────
           if (ps.status != AppStatus.error && ps.errorMessage != null)
@@ -212,16 +243,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
     return dur > 0 ? (pos / dur).clamp(0.0, 1.0) : 0.0;
   }
 
-  String _timeLabel(PlayerState ps) {
-    if (ps.duration == Duration.zero) return '';
-    String fmt(Duration d) {
-      final m = d.inMinutes;
-      final s = (d.inSeconds % 60).toString().padLeft(2, '0');
-      return '$m:$s';
-    }
-    return '${fmt(ps.position)} · -${fmt(ps.duration - ps.position)}';
-  }
-
   String _fmtDuration(Duration d) {
     final m = d.inMinutes;
     final s = (d.inSeconds % 60).toString().padLeft(2, '0');
@@ -265,7 +286,20 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 ),
               const SizedBox(width: 10),
               GestureDetector(
-                onTap: widget.onShowTutorial,
+                onTapDown: (_) => _ignoreNextSingleTap = true,
+                onTap: () {
+                  openSettingsScreen(
+                    context,
+                    onShowTutorial: widget.onShowTutorial ?? () {},
+                  ).then((_) {
+                    if (!mounted) return;
+                    _singleTapTimer?.cancel();
+                    _singleTapTimer = null;
+                    _lastTapTime = null;
+                    _ignoreNextSingleTap = false;
+                    if (_pointerStarts.isEmpty) _resetGesture();
+                  });
+                },
                 child: Container(
                   width: 28,
                   height: 28,
@@ -296,85 +330,75 @@ class _PlayerScreenState extends State<PlayerScreen> {
     );
   }
 
+  // ── LESSON INFO (below wave) ───────────────────────────────
+
+  Widget _buildLessonInfo(PlayerState ps, DegjoColors c) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(28, 10, 28, 0),
+      child: Column(
+        children: [
+          if (ps.currentLesson != null)
+            Text(
+              'Mësimi ${ps.currentIndex + 1}',
+              style: TextStyle(
+                fontSize: 11,
+                color: c.accent,
+                letterSpacing: 1.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          const SizedBox(height: 4),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            child: Text(
+              key: ValueKey(ps.currentIndex),
+              ps.currentLesson?.title ?? 'Duke ngarkuar...',
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 19,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.4,
+                color: c.text,
+                height: 1.2,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // ── PROGRESS BAR ──────────────────────────────────────────
 
   Widget _buildProgressBar(PlayerState ps, DegjoColors c) {
-    final progress = _progress(ps);
     final pos = ps.position;
     final dur = ps.duration;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 20),
+      padding: const EdgeInsets.fromLTRB(24, 4, 24, 12),
       child: Column(
         children: [
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final w = constraints.maxWidth;
-              final fillWidth = w * progress;
-              final thumbX = fillWidth.clamp(6.5, w - 6.5);
-              return Stack(
-                clipBehavior: Clip.none,
-                alignment: Alignment.centerLeft,
-                children: [
-                  // Track
-                  Container(
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: c.separator,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                  // Accent fill
-                  Container(
-                    height: 4,
-                    width: fillWidth,
-                    decoration: BoxDecoration(
-                      color: c.accent,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                  // Circular thumb
-                  Positioned(
-                    left: thumbX - 6.5,
-                    child: Container(
-                      width: 13,
-                      height: 13,
-                      decoration: BoxDecoration(
-                        color: c.accent,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: c.accent.withOpacity(0.15),
-                            spreadRadius: 3,
-                            blurRadius: 0,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
-          const SizedBox(height: 8),
+          BubbleProgressBar(played: _progress(ps)),
+          const SizedBox(height: 2),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 _fmtDuration(pos),
-                style: TextStyle(
-                    fontSize: 12, color: c.muted),
+                style: TextStyle(fontSize: 12, color: c.muted),
               ),
               if (ps.speed != 1.0)
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 7, vertical: 2),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                   decoration: BoxDecoration(
                     color: c.activeLessonBg,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    '${ps.speed}x',
+                    '${ps.speed}×',
                     style: TextStyle(
                       fontSize: 11,
                       color: c.accent,
@@ -384,8 +408,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 ),
               Text(
                 _fmtDuration(dur),
-                style: TextStyle(
-                    fontSize: 12, color: c.muted),
+                style: TextStyle(fontSize: 12, color: c.muted),
               ),
             ],
           ),
@@ -423,9 +446,43 @@ class _PlayerScreenState extends State<PlayerScreen> {
     );
   }
 
+  // ── HINT AREA (just above Mësimi N) ──────────────────────
+
+  Widget _buildHintArea(DegjoColors c) {
+    final hint = _gestureHint;
+    final isSeek = hint == '+30' || hint == '−30';
+    return SizedBox(
+      height: 44,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 28),
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 180),
+          transitionBuilder: (child, anim) => ScaleTransition(
+            scale: Tween(begin: 0.78, end: 1.0).animate(
+              CurvedAnimation(parent: anim, curve: Curves.easeOutBack),
+            ),
+            child: FadeTransition(
+              opacity: CurvedAnimation(parent: anim, curve: Curves.easeOut),
+              child: child,
+            ),
+          ),
+          child: hint.isEmpty
+              ? const SizedBox.shrink(key: ValueKey('_empty'))
+              : Align(
+                  key: ValueKey(hint),
+                  alignment: isSeek
+                      ? (hint == '+30'
+                          ? Alignment.centerRight
+                          : Alignment.centerLeft)
+                      : Alignment.center,
+                  child: _HintBadge(hint: hint, c: c),
+                ),
+        ),
+      ),
+    );
+  }
+
   // ── GESTURE OVERLAY ───────────────────────────────────────
-  // Uses per-pointer tracking so 2/3-finger gestures are reliable:
-  // _moved is only set when a pointer moved relative to ITS OWN start.
 
   void _resetGesture() {
     _allStarts.clear();
@@ -438,18 +495,26 @@ class _PlayerScreenState extends State<PlayerScreen> {
     return Listener(
       behavior: HitTestBehavior.translucent,
       onPointerDown: (e) {
+        // Purge stale pointers: if existing tracked pointers are from >600ms ago,
+        // their UP/cancel was never delivered (e.g. route push mid-gesture).
+        if (_pointerStarts.isNotEmpty &&
+            !_pointerStarts.containsKey(e.pointer) &&
+            DateTime.now().difference(_gestureStart) >
+                const Duration(milliseconds: 100)) {
+          _pointerStarts.clear();
+          _resetGesture();
+        }
+
         _pointerStarts[e.pointer] = e.position;
         final n = _pointerStarts.length;
         if (n > _maxPointers) _maxPointers = n;
 
         if (n == 1) {
-          // First finger — start a fresh gesture
           _resetGesture();
           _maxPointers = 1;
           _gestureStart = DateTime.now();
           _allStarts[e.pointer] = e.position;
         } else {
-          // Additional finger — record its start
           _allStarts[e.pointer] = e.position;
         }
       },
@@ -459,11 +524,14 @@ class _PlayerScreenState extends State<PlayerScreen> {
           _movedPointers.add(e.pointer);
         }
       },
+      // Fix: clean up cancelled pointers so stale IDs don't inflate _maxPointers
+      onPointerCancel: (e) {
+        _pointerStarts.remove(e.pointer);
+      },
       onPointerUp: (e) {
         _allEnds[e.pointer] = e.position;
         _pointerStarts.remove(e.pointer);
 
-        // Wait until ALL fingers are lifted before evaluating
         if (_pointerStarts.isNotEmpty) return;
 
         if (_showJump) { _resetGesture(); return; }
@@ -472,7 +540,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
         final anyMoved = _movedPointers.isNotEmpty;
         final elapsed = DateTime.now().difference(_gestureStart);
 
-        // Average displacement across all participating pointers
         double avgDx = 0, avgDy = 0;
         int measured = 0;
         for (final id in _allEnds.keys) {
@@ -487,32 +554,51 @@ class _PlayerScreenState extends State<PlayerScreen> {
         final absDx = avgDx.abs();
         final absDy = avgDy.abs();
 
-        // 1-finger tap → play/pause
+        // 1-finger tap → play/pause (deferred); double-tap → repeat from start
         if (count == 1 && !anyMoved && elapsed < _tapMax) {
+          if (_ignoreNextSingleTap) {
+            _ignoreNextSingleTap = false;
+            _resetGesture();
+            return;
+          }
           if (ps.lessons.isNotEmpty && !ps.isLoading) {
-            HapticFeedback.lightImpact();
-            if (ps.currentLesson != null && ps.duration == Duration.zero) {
-              ps.loadAndPlay(ps.currentIndex);
+            final now = DateTime.now();
+            final isDoubleTap = _lastTapTime != null &&
+                now.difference(_lastTapTime!) < _doubleTapWindow;
+
+            if (isDoubleTap) {
+              // Cancel pending single-tap — no hint flicker, fire double-tap only
+              _singleTapTimer?.cancel();
+              _singleTapTimer = null;
+              _lastTapTime = null;
+              HapticFeedback.mediumImpact();
+              ps.seekTo(Duration.zero);
+              if (!ps.isPlaying) ps.togglePlay();
+              ps.voice.speak('Nga fillimi');
+              _showHint('↺');
             } else {
-              final wasPlaying = ps.isPlaying;
-              ps.togglePlay();
-              ps.voice.speak(wasPlaying ? 'Ndalo' : 'Duke luajtur');
+              // Confirm tap registered immediately — prevents blind user from
+              // re-tapping (which would trigger an accidental double-tap)
+              HapticFeedback.selectionClick();
+              // Defer single-tap so a second tap within the window can cancel it
+              _lastTapTime = now;
+              _singleTapTimer?.cancel();
+              _singleTapTimer = Timer(_doubleTapWindow, () {
+                if (!mounted) return;
+                final p = context.read<PlayerState>();
+                HapticFeedback.lightImpact();
+                if (p.currentLesson != null && p.duration == Duration.zero) {
+                  p.loadAndPlay(p.currentIndex);
+                  _showHint('▶');
+                } else {
+                  final wasPlaying = p.isPlaying;
+                  p.togglePlay();
+                  p.voice.speak(wasPlaying ? 'Ndalo' : 'Duke luajtur');
+                  _showHint(wasPlaying ? 'II' : '▶');
+                }
+              });
             }
           }
-          _resetGesture();
-          return;
-        }
-
-        // 2-finger tap → cycle speed
-        if (count == 2 && !anyMoved && elapsed < _tapMax) {
-          HapticFeedback.mediumImpact();
-          ps.cycleSpeed();
-          final speedStr = ps.speed == 1.0
-              ? 'normale'
-              : ps.speed == 1.5
-                  ? 'shpejt'
-                  : 'ngadalë';
-          ps.voice.speak('Shpejtësia $speedStr');
           _resetGesture();
           return;
         }
@@ -520,23 +606,24 @@ class _PlayerScreenState extends State<PlayerScreen> {
         // 2-finger swipe → next/prev lesson OR seek ±30s
         if (count == 2) {
           if (absDx > _swipeThreshold && absDx > absDy) {
-            // Horizontal: change lesson
             HapticFeedback.mediumImpact();
             if (avgDx > 0) {
               ps.nextLesson();
+              _showHint('→');
             } else {
               ps.prevLesson();
+              _showHint('←');
             }
             Future.microtask(() => ps.voice.speak(
                 'Mësimi ${ps.currentIndex + 1}: ${ps.currentLesson?.title ?? ''}'));
           } else if (absDy > _swipeThreshold && absDy > absDx) {
-            // Vertical: seek ±30 seconds
             HapticFeedback.selectionClick();
             final newPos = avgDy < 0
-                ? ps.position + _seekAmount   // swipe up → forward
-                : ps.position - _seekAmount;  // swipe down → back
+                ? ps.position + _seekAmount
+                : ps.position - _seekAmount;
             final clampedPos = newPos.isNegative ? Duration.zero : newPos;
             ps.seekTo(clampedPos);
+            _showHint(avgDy < 0 ? '+30' : '−30');
             final mins = clampedPos.inMinutes;
             final secs = clampedPos.inSeconds % 60;
             ps.voice.speak(secs == 0 ? '$mins minuta' : '$mins minuta $secs sekonda');
@@ -558,6 +645,63 @@ class _PlayerScreenState extends State<PlayerScreen> {
         _resetGesture();
       },
       child: const SizedBox.expand(),
+    );
+  }
+}
+
+// ── Hint badge ────────────────────────────────────────────────────
+
+class _HintBadge extends StatelessWidget {
+  final String hint;
+  final DegjoColors c;
+  const _HintBadge({required this.hint, required this.c});
+
+  static const _labels = {
+    '▶': 'duke luajtur',
+    'II': 'ndalo',
+    '+30': 'sekonda',
+    '−30': 'sekonda',
+    '→': 'tjetër',
+    '←': 'mëparshëm',
+    '↺': 'nga fillimi',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final label = _labels[hint];
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: c.accent.withOpacity(0.09),
+        borderRadius: BorderRadius.circular(28),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            hint,
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: c.accent,
+              letterSpacing: -0.5,
+              height: 1.0,
+            ),
+          ),
+          if (label != null) ...[
+            const SizedBox(height: 3),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
+                color: c.accent.withOpacity(0.65),
+                letterSpacing: 0.2,
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

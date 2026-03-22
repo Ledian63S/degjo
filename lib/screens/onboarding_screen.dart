@@ -23,6 +23,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   int _step = 0;
   bool _stepDone = false;
   bool _finished = false;
+  DateTime? _lastTapTime;
+  static const _doubleTapWindow = Duration(milliseconds: 400);
   late AnimationController _flashCtrl;
   late AnimationController _gestureAnimCtrl;
   late Animation<double> _gestureAnim;
@@ -44,35 +46,42 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
   static const _steps = [
     _StepData(
-      stepLabel: 'Gjesti 1 nga 5',
+      stepLabel: 'Gjesti 1 nga 6',
       gestureName: 'Luaj / Ndalo',
       descPre: 'Prek ekranin kudo me',
       descBold: '1 gisht',
       hintText: 'Prek kudo në ekran për ta provuar',
     ),
     _StepData(
-      stepLabel: 'Gjesti 2 nga 5',
+      stepLabel: 'Gjesti 2 nga 6',
+      gestureName: 'Përsërit mësimin',
+      descPre: 'Prek dy herë shpejt me',
+      descBold: '1 gisht',
+      hintText: 'Prek dy herë shpejt njëra pas tjetrës',
+    ),
+    _StepData(
+      stepLabel: 'Gjesti 3 nga 6',
       gestureName: '+30 sekonda',
       descPre: 'Rrëshqit lart me',
       descBold: '2 gishta',
       hintText: 'Prek kudo në ekran për ta provuar',
     ),
     _StepData(
-      stepLabel: 'Gjesti 3 nga 5',
+      stepLabel: 'Gjesti 4 nga 6',
       gestureName: '−30 sekonda',
       descPre: 'Rrëshqit poshtë me',
       descBold: '2 gishta',
       hintText: 'Prek kudo në ekran për ta provuar',
     ),
     _StepData(
-      stepLabel: 'Gjesti 4 nga 5',
+      stepLabel: 'Gjesti 5 nga 6',
       gestureName: 'Ndrysho mësimin',
       descPre: 'Rrëshqit djathtas ose majtas me',
       descBold: '2 gishta',
       hintText: 'Prek kudo në ekran për ta provuar',
     ),
     _StepData(
-      stepLabel: 'Gjesti 5 nga 5',
+      stepLabel: 'Gjesti 6 nga 6',
       gestureName: 'Kalo te mësimi',
       descPre: 'Prek me',
       descBold: '3 gishta',
@@ -125,13 +134,15 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     switch (s) {
       case 0: // 1-finger tap
         return count == 1 && !anyMoved && elapsed < _tapMax;
-      case 1: // 2-finger swipe UP
+      case 1: // 1-finger double-tap — handled separately in onPointerUp
+        return false;
+      case 2: // 2-finger swipe UP
         return count == 2 && avgDy < -_swipeThreshold && absDy > absDx;
-      case 2: // 2-finger swipe DOWN
+      case 3: // 2-finger swipe DOWN
         return count == 2 && avgDy > _swipeThreshold && absDy > absDx;
-      case 3: // 2-finger swipe horizontal (either direction)
+      case 4: // 2-finger swipe horizontal (either direction)
         return count == 2 && absDx > _swipeThreshold && absDx > absDy;
-      case 4: // 3-finger tap
+      case 5: // 3-finger tap
         return count == 3 && !anyMoved && elapsed < _tapMax;
       default:
         return false;
@@ -162,8 +173,12 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
   @override
   Widget build(BuildContext context) {
-    final step = _steps[_step];
     final c = DegjoColors.of(context);
+
+    // Celebration screen — rendered outside Listener so buttons work
+    if (_finished) return _buildFinishScreen(c);
+
+    final step = _steps[_step];
 
     return Material(
       color: c.card,
@@ -218,6 +233,19 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
           _resetGesture();
 
+          // Step 1 is double-tap — detect separately
+          if (_step == 1 && count == 1 && !anyMoved && elapsed < _tapMax) {
+            final now = DateTime.now();
+            if (_lastTapTime != null &&
+                now.difference(_lastTapTime!) < _doubleTapWindow) {
+              _lastTapTime = null;
+              _completeStep();
+            } else {
+              _lastTapTime = now;
+            }
+            return;
+          }
+
           if (_gestureMatchesStep(_step, count, anyMoved, avgDx, avgDy, elapsed)) {
             _completeStep();
           }
@@ -235,9 +263,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
               left: -60,
               child: _blob(260, c.blobPurple, 0.05),
             ),
-
-            // Finish overlay
-            if (_finished) _buildFinishOverlay(c),
 
             // Flash overlay
             AnimatedBuilder(
@@ -360,15 +385,20 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 36),
                     child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 350),
+                      duration: const Duration(milliseconds: 300),
                       transitionBuilder: (child, animation) {
-                        final offsetAnimation = Tween<Offset>(
-                          begin: const Offset(1.0, 0.0),
-                          end: Offset.zero,
-                        ).animate(CurvedAnimation(
-                            parent: animation, curve: Curves.easeOutCubic));
-                        return SlideTransition(
-                            position: offsetAnimation, child: child);
+                        return FadeTransition(
+                          opacity: CurvedAnimation(
+                              parent: animation, curve: Curves.easeOut),
+                          child: SlideTransition(
+                            position: Tween<Offset>(
+                              begin: const Offset(0, 0.06),
+                              end: Offset.zero,
+                            ).animate(CurvedAnimation(
+                                parent: animation, curve: Curves.easeOut)),
+                            child: child,
+                          ),
+                        );
                       },
                       child: Column(
                         key: ValueKey(_step),
@@ -473,85 +503,135 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     );
   }
 
-  Widget _buildFinishOverlay(DegjoColors c) {
-    return Positioned.fill(
-      child: Material(
-        color: c.card,
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 36),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Image.asset('assets/app_logo.png', width: 72, height: 72),
-                const SizedBox(height: 28),
-                Text(
-                  'Gati!',
-                  style: TextStyle(
-                    fontSize: 34,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -1.0,
-                    color: c.text,
+  Widget _buildFinishScreen(DegjoColors c) {
+    return Material(
+      color: c.card,
+      child: Stack(
+        children: [
+          // Background blobs
+          Positioned(
+            top: -80, right: -80,
+            child: _blob(300, c.blobRed, 0.08),
+          ),
+          Positioned(
+            bottom: -60, left: -60,
+            child: _blob(260, c.blobPurple, 0.06),
+          ),
+
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(28, 0, 28, 40),
+              child: Column(
+                children: [
+                  const Spacer(flex: 2),
+
+                  // Celebration icon with glow ring
+                  Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Container(
+                        width: 130,
+                        height: 130,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: c.accent.withOpacity(0.08),
+                        ),
+                      ),
+                      Container(
+                        width: 100,
+                        height: 100,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: c.accent.withOpacity(0.12),
+                        ),
+                      ),
+                      Image.asset(
+                        'assets/app_logo.png',
+                        width: 68,
+                        height: 68,
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Ti i di të gjitha gjestet.\nFillo të dëgjosh mësimet.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: c.muted,
-                    height: 1.55,
-                  ),
-                ),
-                const SizedBox(height: 48),
-                // Primary button — start
-                GestureDetector(
-                  onTap: widget.onComplete,
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    decoration: BoxDecoration(
-                      color: c.accent,
-                      borderRadius: BorderRadius.circular(16),
+
+                  const SizedBox(height: 36),
+
+                  Text(
+                    'Je gati! 🎉',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 36,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -1.2,
+                      color: c.text,
                     ),
-                    child: const Text(
-                      'Fillo',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
+                  ),
+
+                  const SizedBox(height: 14),
+
+                  Text(
+                    'Ti i di të 6 gjestet.\nTani fillo të dëgjosh dhe mëso anglisht.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: c.muted,
+                      height: 1.6,
+                    ),
+                  ),
+
+                  const Spacer(flex: 2),
+
+                  // Primary — start
+                  SizedBox(
+                    width: double.infinity,
+                    child: TextButton(
+                      onPressed: widget.onComplete,
+                      style: TextButton.styleFrom(
+                        backgroundColor: c.accent,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 17),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: const Text(
+                        'Fillo',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 14),
-                // Secondary button — never show again
-                GestureDetector(
-                  onTap: widget.onNeverShow,
-                  child: Container(
+
+                  const SizedBox(height: 12),
+
+                  // Secondary — never show again
+                  SizedBox(
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    decoration: BoxDecoration(
-                      color: c.inputBg,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Text(
-                      'Mos e trego sërish',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
-                        color: c.muted,
+                    child: TextButton(
+                      onPressed: widget.onNeverShow,
+                      style: TextButton.styleFrom(
+                        backgroundColor: c.inputBg,
+                        foregroundColor: c.muted,
+                        padding: const EdgeInsets.symmetric(vertical: 17),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: const Text(
+                        'Mos e trego sërish',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -562,6 +642,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   Widget _buildAnimatedIcon(int step, double v) {
     const assets = [
       'assets/gestures/gesture_tap.svg',
+      'assets/gestures/gesture_double_tap.svg',
       'assets/gestures/gesture_swipe_up.svg',
       'assets/gestures/gesture_swipe_down.svg',
       'assets/gestures/gesture_swipe_lr.svg',
@@ -587,26 +668,30 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     final svg = svgWidget;
 
     switch (step) {
-      case 0: // tap — ripple pulse outward
+      case 0: // 1-finger tap — ripple pulse outward
         return Transform.scale(scale: 1.0 + v * 0.22, child: svg);
 
-      case 1: // swipe up — slides up with slight fade
+      case 1: // double tap — two quick pulses
+        final pulse = (math.sin(v * 4 * math.pi) * 0.14).abs();
+        return Transform.scale(scale: 1.0 + pulse, child: svg);
+
+      case 2: // swipe up — slides up with slight fade
         return Opacity(
           opacity: 1.0 - v * 0.25,
           child: Transform.translate(offset: Offset(0, -v * 38), child: svg),
         );
 
-      case 2: // swipe down — slides down with slight fade
+      case 3: // swipe down — slides down with slight fade
         return Opacity(
           opacity: 1.0 - v * 0.25,
           child: Transform.translate(offset: Offset(0, v * 38), child: svg),
         );
 
-      case 3: // horizontal — smooth left ↔ right oscillation via sin
+      case 4: // horizontal — smooth left ↔ right oscillation via sin
         final dx = math.sin(_lrAnimCtrl.value * 2 * math.pi) * 32;
         return Transform.translate(offset: Offset(dx, 0), child: svg);
 
-      case 4: // 3-finger tap — ripple pulse outward
+      case 5: // 3-finger tap — ripple pulse outward
         return Transform.scale(scale: 1.0 + v * 0.22, child: svg);
 
       default:

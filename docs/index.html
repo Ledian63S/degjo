@@ -99,34 +99,14 @@
 
     /* ── Nav ── */
     nav {
-      position: sticky;
-      top: 0;
-      z-index: 100;
+      position: relative;
+      z-index: 10;
       display: flex;
       align-items: center;
       justify-content: space-between;
       padding: 14px 28px;
       background: transparent;
       transition: border-color var(--transition);
-    }
-
-    /* ── Scroll edge fades ── */
-    .scroll-fade {
-      position: fixed;
-      left: 0;
-      right: 0;
-      height: 80px;
-      pointer-events: none;
-      z-index: 50;
-      transition: opacity var(--transition);
-    }
-    .scroll-fade-top {
-      top: 0;
-      background: linear-gradient(to bottom, var(--bg) 0%, transparent 100%);
-    }
-    .scroll-fade-bottom {
-      bottom: 0;
-      background: linear-gradient(to top, var(--bg) 0%, transparent 100%);
     }
 
     .nav-left {
@@ -636,9 +616,6 @@
 </head>
 <body>
 
-  <div class="scroll-fade scroll-fade-top"></div>
-  <div class="scroll-fade scroll-fade-bottom"></div>
-
   <div class="blob blob-1"></div>
   <div class="blob blob-2"></div>
 
@@ -740,13 +717,13 @@
       </div>
       <div class="feature-card">
         <div class="feature-icon">🌙</div>
-        <h3>Temë automatike</h3>
-        <p>Ndjek pamjen e telefonit me animacion të butë. E ndritshme ose e errët.</p>
+        <h3>Temë sipas dëshirës</h3>
+        <p>Ndjek sistemin automatikisht ose ndrysho manualisht nga cilësimet. E ndritshme ose e errët.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon">⚡</div>
         <h3>E shpejtë</h3>
-        <p>Audio streamon nga serverët tanë. Pa YouTube, pa reklama, pa ndërprerje.</p>
+        <p>Audio ngarkohet dhe streamon menjëherë. Pa reklama, pa ndërprerje, pa UI të jashtëm.</p>
       </div>
     </div>
   </section>

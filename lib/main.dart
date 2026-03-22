@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'services/player_state.dart';
+import 'services/theme_notifier.dart';
 import 'screens/player_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'theme/degjo_colors.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
   await JustAudioBackground.init(
     androidNotificationChannelId: 'com.degjo.audio',
@@ -17,8 +21,11 @@ Future<void> main() async {
   );
 
   runApp(
-    ChangeNotifierProvider(
-      create: (_) => PlayerState()..init(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => PlayerState()..init()),
+        ChangeNotifierProvider(create: (_) => ThemeNotifier()),
+      ],
       child: const DegjoApp(),
     ),
   );
@@ -29,6 +36,7 @@ class DegjoApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeMode = context.watch<ThemeNotifier>().mode;
     return MaterialApp(
       title: 'Dëgjo',
       debugShowCheckedModeBanner: false,
@@ -48,7 +56,7 @@ class DegjoApp extends StatelessWidget {
         fontFamily: 'Roboto',
         extensions: const [DegjoColors.dark],
       ),
-      themeMode: ThemeMode.system,
+      themeMode: themeMode,
       home: const _RootScreen(),
     );
   }
@@ -124,7 +132,7 @@ class _RootScreenState extends State<_RootScreen> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        PlayerScreen(onShowTutorial: _showTutorial),
+        PlayerScreen(onShowTutorial: _showTutorial, gesturesEnabled: !_showOnboarding),
         if (_showOnboarding)
           OnboardingScreen(
             onComplete: _completeOnboarding,
