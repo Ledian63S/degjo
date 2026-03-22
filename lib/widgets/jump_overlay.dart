@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../theme/degjo_colors.dart';
 
 class JumpOverlay extends StatefulWidget {
   final int lessonCount;
@@ -54,6 +55,7 @@ class _JumpOverlayState extends State<JumpOverlay> {
 
   @override
   Widget build(BuildContext context) {
+    final c = DegjoColors.of(context);
     return GestureDetector(
       onTap: _confirm,
       child: Container(
@@ -64,7 +66,7 @@ class _JumpOverlayState extends State<JumpOverlay> {
             padding:
                 const EdgeInsets.symmetric(horizontal: 40, vertical: 36),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: c.card,
               borderRadius: BorderRadius.circular(28),
               boxShadow: [
                 BoxShadow(
@@ -77,27 +79,27 @@ class _JumpOverlayState extends State<JumpOverlay> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
+                Icon(
                   Icons.keyboard_arrow_up_rounded,
-                  color: Color(0xFFDDDDDD),
+                  color: c.muted,
                   size: 28,
                 ),
                 Text(
                   '$_target',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 72,
                     fontWeight: FontWeight.w800,
-                    color: Color(0xFFFF0000),
+                    color: c.accent,
                     height: 1,
                     letterSpacing: -3,
                   ),
                 ),
                 const SizedBox(height: 14),
-                const Text(
+                Text(
                   'Trokitni për të konfirmuar',
                   style: TextStyle(
                     fontSize: 14,
-                    color: Color(0xFFAAAAAA),
+                    color: c.muted,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -111,13 +113,13 @@ class _JumpOverlayState extends State<JumpOverlay> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 32, vertical: 12),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF5F5F5),
+                      color: c.separator,
                       borderRadius: BorderRadius.circular(50),
                     ),
-                    child: const Text(
+                    child: Text(
                       'Anulo',
                       style: TextStyle(
-                        color: Color(0xFF0F0F0F),
+                        color: c.text,
                         fontWeight: FontWeight.w600,
                       ),
                     ),

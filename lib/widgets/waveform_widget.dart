@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import '../theme/degjo_colors.dart';
 
 class WaveformWidget extends StatefulWidget {
   final double progress;
@@ -52,6 +53,7 @@ class _WaveformWidgetState extends State<WaveformWidget>
 
   @override
   Widget build(BuildContext context) {
+    final c = DegjoColors.of(context);
     return SizedBox(
       width: double.infinity,
       height: 140,
@@ -64,6 +66,8 @@ class _WaveformWidgetState extends State<WaveformWidget>
                 progress: widget.progress,
                 phase: _phase,
                 isIdle: !widget.isPlaying && widget.progress == 0.0,
+                accentColor: c.accent,
+                mutedColor: c.separator,
               ),
             ),
           ),
@@ -77,9 +81,9 @@ class _WaveformWidgetState extends State<WaveformWidget>
                   if (widget.lessonLabel.isNotEmpty)
                     Text(
                       widget.lessonLabel,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11,
-                        color: Color(0xFFFF0000),
+                        color: c.accent,
                         letterSpacing: 1.5,
                         fontWeight: FontWeight.w600,
                       ),
@@ -90,11 +94,11 @@ class _WaveformWidgetState extends State<WaveformWidget>
                     textAlign: TextAlign.center,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w700,
                       letterSpacing: -0.4,
-                      color: Color(0xFF0F0F0F),
+                      color: c.text,
                       height: 1.2,
                     ),
                   ),
@@ -102,9 +106,9 @@ class _WaveformWidgetState extends State<WaveformWidget>
                   if (widget.timeLabel.isNotEmpty)
                     Text(
                       widget.timeLabel,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
-                        color: Color(0xFFAAAAAA),
+                        color: c.muted,
                       ),
                     ),
                 ],
@@ -121,11 +125,15 @@ class _WaveformPainter extends CustomPainter {
   final double progress;
   final double phase;
   final bool isIdle;
+  final Color accentColor;
+  final Color mutedColor;
 
   const _WaveformPainter({
     required this.progress,
     required this.phase,
     required this.isIdle,
+    required this.accentColor,
+    required this.mutedColor,
   });
 
   @override
@@ -166,9 +174,8 @@ class _WaveformPainter extends CustomPainter {
       final by = (h - bh) / 2;
 
       final isPlayed = !isIdle && p < progress;
-      final color = isPlayed
-          ? Color.fromRGBO(255, 0, 0, alpha)
-          : Color.fromRGBO(224, 224, 224, alpha);
+      final baseColor = isPlayed ? accentColor : mutedColor;
+      final color = baseColor.withOpacity(alpha);
 
       canvas.drawRRect(
         RRect.fromRectAndRadius(
@@ -184,5 +191,9 @@ class _WaveformPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_WaveformPainter old) =>
-      old.progress != progress || old.phase != phase || old.isIdle != isIdle;
+      old.progress != progress ||
+      old.phase != phase ||
+      old.isIdle != isIdle ||
+      old.accentColor != accentColor ||
+      old.mutedColor != mutedColor;
 }

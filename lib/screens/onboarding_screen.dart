@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import '../theme/degjo_colors.dart';
 
 class OnboardingScreen extends StatefulWidget {
   final VoidCallback onComplete;
@@ -156,9 +157,10 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   @override
   Widget build(BuildContext context) {
     final step = _steps[_step];
+    final c = DegjoColors.of(context);
 
     return Material(
-      color: Colors.white,
+      color: c.card,
       child: Listener(
         behavior: HitTestBehavior.opaque,
         onPointerDown: (e) {
@@ -220,20 +222,20 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             Positioned(
               top: -80,
               right: -80,
-              child: _blob(300, const Color(0xFFFF0000), 0.06),
+              child: _blob(300, c.blobRed, 0.06),
             ),
             Positioned(
               bottom: -60,
               left: -60,
-              child: _blob(260, const Color(0xFF6C63FF), 0.05),
+              child: _blob(260, c.blobPurple, 0.05),
             ),
 
-            // Red flash overlay
+            // Flash overlay
             AnimatedBuilder(
               animation: _flashCtrl,
               builder: (context, _) => Opacity(
                 opacity: _flashCtrl.value,
-                child: Container(color: const Color(0x0AFF0000)),
+                child: Container(color: c.accent.withOpacity(0.04)),
               ),
             ),
 
@@ -251,11 +253,11 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                           width: 28,
                           height: 20,
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFF0000),
+                            color: c.accent,
                             borderRadius: BorderRadius.circular(5),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFFFF0000).withValues(alpha: 0.25),
+                                color: c.accent.withValues(alpha: 0.25),
                                 blurRadius: 8,
                                 offset: const Offset(0, 2),
                               ),
@@ -269,13 +271,13 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                           ),
                         ),
                         const SizedBox(width: 8),
-                        const Text(
+                        Text(
                           'Dëgjo',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
                             letterSpacing: -0.4,
-                            color: Color(0xFF0F0F0F),
+                            color: c.text,
                           ),
                         ),
                         const Spacer(),
@@ -289,13 +291,13 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                                 horizontal: 14, vertical: 5),
                             decoration: BoxDecoration(
                               border: Border.all(
-                                  color: const Color(0xFFEEEEEE)),
+                                  color: c.dashedBorder),
                               borderRadius: BorderRadius.circular(20),
                             ),
-                            child: const Text(
+                            child: Text(
                               'Kalo →',
                               style: TextStyle(
-                                  fontSize: 13, color: Color(0xFFCCCCCC)),
+                                  fontSize: 13, color: c.muted),
                             ),
                           ),
                         ),
@@ -317,10 +319,10 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                         height: 7,
                         decoration: BoxDecoration(
                           color: isActive
-                              ? const Color(0xFFFF0000)
+                              ? c.accent
                               : isDone
-                                  ? const Color(0xFFFFc0c0)
-                                  : const Color(0xFFF0F0F0),
+                                  ? c.dotDone
+                                  : c.dotInactive,
                           borderRadius:
                               BorderRadius.circular(isActive ? 4 : 50),
                         ),
@@ -342,13 +344,13 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                               height: 160,
                               decoration: BoxDecoration(
                                 color: _stepDone
-                                    ? const Color(0xFFFFF0F0)
-                                    : const Color(0xFFFAFAFA),
+                                    ? c.activeLessonBg
+                                    : c.inputBg,
                                 shape: BoxShape.circle,
                                 border: Border.all(
                                   color: _stepDone
-                                      ? const Color(0xFFFFCCCC)
-                                      : const Color(0xFFF0F0F0),
+                                      ? c.dotDone
+                                      : c.dashedBorder,
                                   width: 1.5,
                                 ),
                               ),
@@ -384,9 +386,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                         children: [
                           Text(
                             step.stepLabel,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 11,
-                              color: Color(0xFFFF0000),
+                              color: c.accent,
                               letterSpacing: 1.5,
                               fontWeight: FontWeight.w600,
                             ),
@@ -395,21 +397,21 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                           Text(
                             step.gestureName,
                             textAlign: TextAlign.center,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 26,
                               fontWeight: FontWeight.w700,
                               letterSpacing: -0.7,
                               height: 1.2,
-                              color: Color(0xFF0F0F0F),
+                              color: c.text,
                             ),
                           ),
                           const SizedBox(height: 10),
                           RichText(
                             textAlign: TextAlign.center,
                             text: TextSpan(
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 16,
-                                color: Color(0xFFAAAAAA),
+                                color: c.muted,
                                 height: 1.5,
                                 fontFamily: 'Roboto',
                               ),
@@ -417,8 +419,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                                 TextSpan(text: '${step.descPre} '),
                                 TextSpan(
                                   text: step.descBold,
-                                  style: const TextStyle(
-                                    color: Color(0xFF0F0F0F),
+                                  style: TextStyle(
+                                    color: c.text,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
@@ -438,12 +440,12 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                       padding: const EdgeInsets.all(18),
                       decoration: BoxDecoration(
                         color: _stepDone
-                            ? const Color(0xFFFFF5F5)
-                            : const Color(0xFFFAFAFA),
+                            ? c.activeLessonBg
+                            : c.inputBg,
                         borderRadius: BorderRadius.circular(16),
                         border: _stepDone
                             ? Border.all(
-                                color: const Color(0xFFFFCCCC), width: 1.5)
+                                color: c.dotDone, width: 1.5)
                             : null,
                       ),
                       foregroundDecoration: _stepDone
@@ -451,7 +453,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                           : BoxDecoration(
                               borderRadius: BorderRadius.circular(16),
                               border: _DashedBorder(
-                                color: const Color(0xFFE8E8E8),
+                                color: c.dashedBorder,
                                 width: 1.5,
                                 dash: 6,
                                 gap: 4,
@@ -463,8 +465,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                           style: TextStyle(
                             fontSize: 14,
                             color: _stepDone
-                                ? const Color(0xFFFF0000)
-                                : const Color(0xFFCCCCCC),
+                                ? c.accent
+                                : c.muted,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -494,7 +496,23 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       'assets/gestures/gesture_three_tap.svg',
     ];
 
-    final svg = SvgPicture.asset(assets[step], width: 70, height: 70);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // In dark mode, the dark (#0f0f0f) SVG elements are invisible.
+    // Apply a color filter to swap them to a light gray.
+    // The tap icon (step 0) only uses red — no filter needed.
+    Widget svgWidget = SvgPicture.asset(assets[step], width: 70, height: 70);
+    if (isDark && step != 0) {
+      svgWidget = ColorFiltered(
+        colorFilter: const ColorFilter.mode(
+          Color(0xFFDDDDDD),
+          BlendMode.srcIn,
+        ),
+        child: svgWidget,
+      );
+    }
+
+    final svg = svgWidget;
 
     switch (step) {
       case 0: // tap — ripple pulse outward
@@ -632,4 +650,3 @@ class _DashedBorder extends BoxBorder {
   @override
   ShapeBorder scale(double t) => this;
 }
-

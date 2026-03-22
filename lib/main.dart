@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'services/player_state.dart';
 import 'screens/player_screen.dart';
 import 'screens/onboarding_screen.dart';
+import 'theme/degjo_colors.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,13 +33,21 @@ class DegjoApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFFFF0000),
-          brightness: Brightness.light,
-        ),
+        brightness: Brightness.light,
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFFF0000), brightness: Brightness.light),
         scaffoldBackgroundColor: const Color(0xFFF0F0F0),
         fontFamily: 'Roboto',
+        extensions: const [DegjoColors.light],
       ),
+      darkTheme: ThemeData(
+        useMaterial3: true,
+        brightness: Brightness.dark,
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFFF453A), brightness: Brightness.dark),
+        scaffoldBackgroundColor: const Color(0xFF0D0D0D),
+        fontFamily: 'Roboto',
+        extensions: const [DegjoColors.dark],
+      ),
+      themeMode: ThemeMode.system,
       home: const _RootScreen(),
     );
   }

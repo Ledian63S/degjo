@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/lesson.dart';
+import '../theme/degjo_colors.dart';
 
 class LessonList extends StatefulWidget {
   final List<Lesson> lessons;
@@ -56,6 +57,7 @@ class _LessonListState extends State<LessonList> {
 
   @override
   Widget build(BuildContext context) {
+    final c = DegjoColors.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -64,19 +66,19 @@ class _LessonListState extends State<LessonList> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'Mësimet',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: Color(0xFF0F0F0F),
+                  color: c.text,
                 ),
               ),
               Text(
                 '${widget.lessons.length} gjithsej',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
-                  color: Color(0xFFCCCCCC),
+                  color: c.muted,
                 ),
               ),
             ],
@@ -122,11 +124,12 @@ class _LessonRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = DegjoColors.of(context);
     return Container(
-      color: isCurrent ? const Color(0xFFFFF0F0) : Colors.white,
+      color: isCurrent ? c.activeLessonBg : c.card,
       child: Column(
         children: [
-          Container(height: 0.5, color: const Color(0xFFF5F5F5)),
+          Container(height: 0.5, color: c.separator),
           Expanded(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -143,8 +146,8 @@ class _LessonRow extends StatelessWidget {
                         fontWeight:
                             isCurrent ? FontWeight.w700 : FontWeight.w500,
                         color: isCurrent
-                            ? const Color(0xFFFF0000)
-                            : const Color(0xFFDDDDDD),
+                            ? c.accent
+                            : c.muted,
                       ),
                     ),
                   ),
@@ -156,13 +159,16 @@ class _LessonRow extends StatelessWidget {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(3),
                       gradient: isCurrent
-                          ? const LinearGradient(
+                          ? LinearGradient(
                               begin: Alignment.topCenter,
                               end: Alignment.bottomCenter,
-                              colors: [Color(0xFFFF4444), Color(0xFFFF0000)],
+                              colors: [
+                                c.accent.withOpacity(0.7),
+                                c.accent,
+                              ],
                             )
                           : null,
-                      color: isCurrent ? null : const Color(0xFFF0F0F0),
+                      color: isCurrent ? null : c.dotInactive,
                     ),
                   ),
                   const SizedBox(width: 14),
@@ -175,10 +181,10 @@ class _LessonRow extends StatelessWidget {
                         isCurrent
                           ? _MarqueeText(
                               text: lesson.title,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w500,
-                                color: Color(0xFF0F0F0F),
+                                color: c.text,
                               ),
                             )
                           : Text(
@@ -188,16 +194,16 @@ class _LessonRow extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w500,
-                                color: isDone ? const Color(0xFFCCCCCC) : const Color(0xFFBBBBBB),
+                                color: c.muted,
                               ),
                             ),
                         if (isCurrent) ...[
                           const SizedBox(height: 3),
-                          const Text(
+                          Text(
                             'Duke luajtur',
                             style: TextStyle(
                               fontSize: 12,
-                              color: Color(0xFFFF0000),
+                              color: c.accent,
                             ),
                           ),
                         ],
@@ -225,17 +231,18 @@ class _StatusDot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = DegjoColors.of(context);
     if (isCurrent) {
-      // Red circle with pause bars
+      // Accent circle with pause bars
       return Container(
         width: 22,
         height: 22,
         decoration: BoxDecoration(
-          color: const Color(0xFFFF0000),
+          color: c.accent,
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFFFF0000).withOpacity(0.35),
+              color: c.accent.withOpacity(0.35),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -249,7 +256,7 @@ class _StatusDot extends StatelessWidget {
                 width: 3,
                 height: 8,
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: c.card,
                   borderRadius: BorderRadius.circular(1),
                 ),
               ),
@@ -258,7 +265,7 @@ class _StatusDot extends StatelessWidget {
                 width: 3,
                 height: 8,
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: c.card,
                   borderRadius: BorderRadius.circular(1),
                 ),
               ),
@@ -269,18 +276,18 @@ class _StatusDot extends StatelessWidget {
     }
 
     if (isDone) {
-      // Grey circle with checkmark
+      // Separator-colored circle with checkmark
       return Container(
         width: 22,
         height: 22,
-        decoration: const BoxDecoration(
-          color: Color(0xFFF5F5F5),
+        decoration: BoxDecoration(
+          color: c.separator,
           shape: BoxShape.circle,
         ),
         child: Center(
           child: CustomPaint(
             size: const Size(11, 11),
-            painter: const _CheckmarkPainter(),
+            painter: _CheckmarkPainter(color: c.muted),
           ),
         ),
       );
@@ -292,19 +299,20 @@ class _StatusDot extends StatelessWidget {
       height: 22,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: Border.all(color: const Color(0xFFE8E8E8), width: 0.5),
+        border: Border.all(color: c.dashedBorder, width: 0.5),
       ),
     );
   }
 }
 
 class _CheckmarkPainter extends CustomPainter {
-  const _CheckmarkPainter();
+  final Color color;
+  const _CheckmarkPainter({required this.color});
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = const Color(0xFFBBBBBB)
+      ..color = color
       ..strokeWidth = 1.5
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round
@@ -319,7 +327,7 @@ class _CheckmarkPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_CheckmarkPainter old) => false;
+  bool shouldRepaint(_CheckmarkPainter old) => old.color != color;
 }
 
 class _MarqueeText extends StatefulWidget {
@@ -363,31 +371,40 @@ class _MarqueeTextState extends State<_MarqueeText>
       }
 
       final overflow = tp.width - constraints.maxWidth + 16;
-      return ClipRect(
-        child: AnimatedBuilder(
-          animation: _ctrl,
-          builder: (context, _) {
-            final v = _ctrl.value;
-            double offset;
-            if (v < 0.15) {
-              offset = 0;
-            } else if (v < 0.65) {
-              offset = ((v - 0.15) / 0.5) * overflow;
-            } else if (v < 0.80) {
-              offset = overflow;
-            } else {
-              offset = (1 - (v - 0.80) / 0.20) * overflow;
-            }
-            return Transform.translate(
-              offset: Offset(-offset, 0),
-              child: Text(
-                widget.text,
-                style: widget.style,
-                maxLines: 1,
-                softWrap: false,
-              ),
-            );
-          },
+      // SizedBox fixes the clip window width; ClipRect clips rendering to it;
+      // UnconstrainedBox lets the Text render at full natural width.
+      return SizedBox(
+        width: constraints.maxWidth,
+        child: ClipRect(
+          child: AnimatedBuilder(
+            animation: _ctrl,
+            builder: (context, _) {
+              final v = _ctrl.value;
+              double offset;
+              if (v < 0.15) {
+                offset = 0;
+              } else if (v < 0.65) {
+                offset = ((v - 0.15) / 0.5) * overflow;
+              } else if (v < 0.80) {
+                offset = overflow;
+              } else {
+                offset = (1 - (v - 0.80) / 0.20) * overflow;
+              }
+              return Transform.translate(
+                offset: Offset(-offset, 0),
+                child: UnconstrainedBox(
+                  constrainedAxis: Axis.vertical,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    widget.text,
+                    style: widget.style,
+                    maxLines: 1,
+                    softWrap: false,
+                  ),
+                ),
+              );
+            },
+          ),
         ),
       );
     });

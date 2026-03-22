@@ -5,6 +5,7 @@ import '../services/player_state.dart';
 import '../widgets/lesson_list.dart';
 import '../widgets/jump_overlay.dart';
 import '../widgets/waveform_widget.dart';
+import '../theme/degjo_colors.dart';
 
 class PlayerScreen extends StatefulWidget {
   const PlayerScreen({super.key});
@@ -31,21 +32,22 @@ class _PlayerScreenState extends State<PlayerScreen> {
   @override
   Widget build(BuildContext context) {
     final ps = context.watch<PlayerState>();
+    final c = DegjoColors.of(context);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F0F0),
+      backgroundColor: c.background,
       body: Stack(
         children: [
           // ── Background blobs ──────────────────────────────────
           Positioned(
             top: -60,
             right: -60,
-            child: _blob(260, const Color(0xFFFF0000), 0.07),
+            child: _blob(260, c.blobRed, 0.07),
           ),
           Positioned(
             top: 180,
             left: -80,
-            child: _blob(220, const Color(0xFF6C63FF), 0.06),
+            child: _blob(220, c.blobPurple, 0.06),
           ),
 
           // ── Main layout ───────────────────────────────────────
@@ -53,7 +55,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
             bottom: false,
             child: Column(
               children: [
-                _buildHeader(ps),
+                _buildHeader(ps, c),
                 WaveformWidget(
                   progress: _progress(ps),
                   isPlaying: ps.isPlaying,
@@ -64,8 +66,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
                       ps.currentLesson?.title ?? 'Duke ngarkuar...',
                   timeLabel: _timeLabel(ps),
                 ),
-                _buildProgressBar(ps),
-                Expanded(child: _buildWhiteCard(ps)),
+                _buildProgressBar(ps, c),
+                Expanded(child: _buildWhiteCard(ps, c)),
               ],
             ),
           ),
@@ -93,10 +95,10 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
           // ── Per-lesson loading ────────────────────────────────
           if (ps.isLoading && ps.status != AppStatus.loading)
-            const Positioned.fill(
+            Positioned.fill(
               child: Center(
                 child: CircularProgressIndicator(
-                  color: Color(0xFFFF0000),
+                  color: c.accent,
                   strokeWidth: 2,
                 ),
               ),
@@ -112,10 +114,10 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: c.card,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                      color: const Color(0xFFFF0000), width: 0.5),
+                      color: c.errorBorder, width: 0.5),
                   boxShadow: [
                     BoxShadow(
                         color: Colors.black.withOpacity(0.06),
@@ -125,8 +127,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 child: Text(
                   ps.errorMessage!,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
-                      color: Color(0xFF888888), fontSize: 13),
+                  style: TextStyle(
+                      color: c.muted, fontSize: 13),
                 ),
               ),
             ),
@@ -135,21 +137,21 @@ class _PlayerScreenState extends State<PlayerScreen> {
           if (ps.status == AppStatus.error)
             Positioned.fill(
               child: Container(
-                color: const Color(0xFFF0F0F0),
+                color: c.background,
                 child: Center(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 40),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.wifi_off_rounded,
-                            color: Color(0xFFBBBBBB), size: 44),
+                        Icon(Icons.wifi_off_rounded,
+                            color: c.muted, size: 44),
                         const SizedBox(height: 20),
                         Text(
                           ps.errorMessage ?? 'Gabim i panjohur.',
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
-                              color: Color(0xFF888888),
+                          style: TextStyle(
+                              color: c.muted,
                               fontSize: 15,
                               height: 1.5),
                         ),
@@ -160,13 +162,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 28, vertical: 13),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFFF0000),
+                              color: c.accent,
                               borderRadius: BorderRadius.circular(14),
                             ),
-                            child: const Text(
+                            child: Text(
                               'Provo sërish',
                               style: TextStyle(
-                                  color: Colors.white,
+                                  color: c.card,
                                   fontWeight: FontWeight.w600,
                                   fontSize: 15),
                             ),
@@ -181,12 +183,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
           // ── Initial loading overlay ───────────────────────────
           if (ps.status == AppStatus.loading && ps.lessons.isEmpty)
-            const Positioned.fill(
+            Positioned.fill(
               child: ColoredBox(
-                color: Color(0xFFF0F0F0),
+                color: c.background,
                 child: Center(
                   child: CircularProgressIndicator(
-                    color: Color(0xFFFF0000),
+                    color: c.accent,
                     strokeWidth: 2,
                   ),
                 ),
@@ -237,7 +239,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   // ── HEADER ────────────────────────────────────────────────
 
-  Widget _buildHeader(PlayerState ps) {
+  Widget _buildHeader(PlayerState ps, DegjoColors c) {
     final counter = ps.lessons.isNotEmpty
         ? '${ps.currentIndex + 1} / ${ps.lessons.length}'
         : '';
@@ -253,20 +255,20 @@ class _PlayerScreenState extends State<PlayerScreen> {
           padding: const EdgeInsets.fromLTRB(24, 14, 24, 0),
           child: Row(
             children: [
-              const Text(
+              Text(
                 'Dëgjo',
                 style: TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.w700,
                   letterSpacing: -0.5,
-                  color: Color(0xFF0F0F0F),
+                  color: c.text,
                 ),
               ),
               const Spacer(),
               if (counter.isNotEmpty)
                 Text(
                   counter,
-                  style: const TextStyle(fontSize: 12, color: Color(0xFFAAAAAA)),
+                  style: TextStyle(fontSize: 12, color: c.muted),
                 ),
             ],
           ),
@@ -278,7 +280,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
               return Container(
                 height: 2,
                 width: constraints.maxWidth * completionProgress,
-                color: const Color(0xFFFF0000),
+                color: c.accent,
               );
             },
           ),
@@ -289,7 +291,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   // ── PROGRESS BAR ──────────────────────────────────────────
 
-  Widget _buildProgressBar(PlayerState ps) {
+  Widget _buildProgressBar(PlayerState ps, DegjoColors c) {
     final progress = _progress(ps);
     final pos = ps.position;
     final dur = ps.duration;
@@ -311,16 +313,16 @@ class _PlayerScreenState extends State<PlayerScreen> {
                   Container(
                     height: 4,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFE0E0E0),
+                      color: c.separator,
                       borderRadius: BorderRadius.circular(4),
                     ),
                   ),
-                  // Red fill
+                  // Accent fill
                   Container(
                     height: 4,
                     width: fillWidth,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFF0000),
+                      color: c.accent,
                       borderRadius: BorderRadius.circular(4),
                     ),
                   ),
@@ -331,11 +333,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
                       width: 13,
                       height: 13,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFF0000),
+                        color: c.accent,
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFFFF0000).withOpacity(0.15),
+                            color: c.accent.withOpacity(0.15),
                             spreadRadius: 3,
                             blurRadius: 0,
                           ),
@@ -353,30 +355,30 @@ class _PlayerScreenState extends State<PlayerScreen> {
             children: [
               Text(
                 _fmtDuration(pos),
-                style: const TextStyle(
-                    fontSize: 12, color: Color(0xFFAAAAAA)),
+                style: TextStyle(
+                    fontSize: 12, color: c.muted),
               ),
               if (ps.speed != 1.0)
                 Container(
                   padding: const EdgeInsets.symmetric(
                       horizontal: 7, vertical: 2),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFFF0F0),
+                    color: c.activeLessonBg,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
                     '${ps.speed}x',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
-                      color: Color(0xFFFF0000),
+                      color: c.accent,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
               Text(
                 _fmtDuration(dur),
-                style: const TextStyle(
-                    fontSize: 12, color: Color(0xFFAAAAAA)),
+                style: TextStyle(
+                    fontSize: 12, color: c.muted),
               ),
             ],
           ),
@@ -387,12 +389,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   // ── WHITE CARD ────────────────────────────────────────────
 
-  Widget _buildWhiteCard(PlayerState ps) {
+  Widget _buildWhiteCard(PlayerState ps, DegjoColors c) {
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        boxShadow: [
+      decoration: BoxDecoration(
+        color: c.card,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        boxShadow: const [
           BoxShadow(
             color: Color(0x12000000),
             blurRadius: 24,
@@ -552,4 +554,3 @@ class _PlayerScreenState extends State<PlayerScreen> {
     );
   }
 }
-
