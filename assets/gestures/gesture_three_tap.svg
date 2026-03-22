@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 150">
+  <!-- Tap ripples (centered between three fingers) -->
+  <circle cx="50" cy="22" r="20" fill="none" stroke="#FF0000" stroke-width="2" opacity="0.2"/>
+  <circle cx="50" cy="22" r="12" fill="none" stroke="#FF0000" stroke-width="2" opacity="0.45"/>
+  <circle cx="50" cy="22" r="5" fill="#FF0000"/>
+
+  <!-- Index finger (left) -->
+  <rect x="22" y="34" width="16" height="64" rx="8" fill="#1C1C1E"/>
+
+  <!-- Middle finger (tallest, center) -->
+  <rect x="41" y="28" width="16" height="70" rx="8" fill="#1C1C1E"/>
+
+  <!-- Ring finger (right) -->
+  <rect x="60" y="34" width="16" height="64" rx="8" fill="#1C1C1E"/>
+
+  <!-- Palm -->
+  <rect x="16" y="90" width="68" height="50" rx="14" fill="#1C1C1E"/>
+
+  <!-- Thumb -->
+  <ellipse cx="10" cy="106" rx="12" ry="8" fill="#1C1C1E" transform="rotate(-18 10 106)"/>
+</svg>

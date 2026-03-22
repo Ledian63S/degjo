@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 150">
+  <!-- Index finger -->
+  <rect x="35" y="10" width="17" height="70" rx="8.5" fill="#1C1C1E"/>
+
+  <!-- Middle finger -->
+  <rect x="54" y="10" width="17" height="70" rx="8.5" fill="#1C1C1E"/>
+
+  <!-- Ring finger (curled) -->
+  <rect x="23" y="54" width="15" height="26" rx="7.5" fill="#1C1C1E"/>
+
+  <!-- Palm -->
+  <rect x="20" y="72" width="60" height="50" rx="14" fill="#1C1C1E"/>
+
+  <!-- Thumb -->
+  <ellipse cx="14" cy="88" rx="12" ry="8" fill="#1C1C1E" transform="rotate(-18 14 88)"/>
+
+  <!-- Downward arrow -->
+  <line x1="50" y1="130" x2="50" y2="146" stroke="#FF0000" stroke-width="3.5" stroke-linecap="round"/>
+  <polyline points="41,135 50,146 59,135" fill="none" stroke="#FF0000" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

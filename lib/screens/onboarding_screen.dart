@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class OnboardingScreen extends StatefulWidget {
   final VoidCallback onComplete;
@@ -460,33 +461,18 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
   /// Returns the icon for [step] with a movement/scale animation driven by [v] (0→1).
   Widget _buildAnimatedIcon(int step, double v) {
-    // (hand emoji, direction symbol, direction color)
-    const data = [
-      ('👆', '', false),        // tap
-      ('✌️', '↑', true),       // 2-finger swipe up
-      ('✌️', '↓', true),       // 2-finger swipe down
-      ('✌️', '↔', true),       // 2-finger horizontal
-      ('🖐', '', false),        // 3-finger tap — open hand
+    const assets = [
+      'assets/gestures/gesture_tap.svg',
+      'assets/gestures/gesture_swipe_up.svg',
+      'assets/gestures/gesture_swipe_down.svg',
+      'assets/gestures/gesture_swipe_lr.svg',
+      'assets/gestures/gesture_three_tap.svg',
     ];
-    final (emoji, arrow, hasArrow) = data[step];
 
-    Widget icon = Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(emoji, style: const TextStyle(fontSize: 64, height: 1)),
-        if (hasArrow) ...[
-          const SizedBox(height: 6),
-          Text(
-            arrow,
-            style: const TextStyle(
-              fontSize: 26,
-              color: Color(0xFFFF0000),
-              fontWeight: FontWeight.w700,
-              height: 1,
-            ),
-          ),
-        ],
-      ],
+    final icon = SvgPicture.asset(
+      assets[step],
+      width: 110,
+      height: 140,
     );
 
     switch (step) {
@@ -499,7 +485,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       case 3:
         return Transform.translate(offset: Offset(v * 11, 0), child: icon);
       case 4:
-        return Transform.translate(offset: Offset(0, v * 7), child: icon);
+        return Transform.scale(scale: 0.88 + v * 0.12, child: icon);
       default:
         return icon;
     }
