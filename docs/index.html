@@ -99,14 +99,34 @@
 
     /* ── Nav ── */
     nav {
-      position: relative;
-      z-index: 10;
+      position: sticky;
+      top: 0;
+      z-index: 100;
       display: flex;
       align-items: center;
       justify-content: space-between;
       padding: 14px 28px;
       background: transparent;
       transition: border-color var(--transition);
+    }
+
+    /* ── Scroll edge fades ── */
+    .scroll-fade {
+      position: fixed;
+      left: 0;
+      right: 0;
+      height: 80px;
+      pointer-events: none;
+      z-index: 50;
+      transition: opacity var(--transition);
+    }
+    .scroll-fade-top {
+      top: 0;
+      background: linear-gradient(to bottom, var(--bg) 0%, transparent 100%);
+    }
+    .scroll-fade-bottom {
+      bottom: 0;
+      background: linear-gradient(to top, var(--bg) 0%, transparent 100%);
     }
 
     .nav-left {
@@ -615,6 +635,9 @@
   </style>
 </head>
 <body>
+
+  <div class="scroll-fade scroll-fade-top"></div>
+  <div class="scroll-fade scroll-fade-bottom"></div>
 
   <div class="blob blob-1"></div>
   <div class="blob blob-2"></div>
