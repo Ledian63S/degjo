@@ -1,12 +1,15 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import '../theme/degjo_colors.dart';
 
 class WaveformWidget extends StatefulWidget {
   final double played; // 0.0–1.0
+  final String gestureHint;
 
   const WaveformWidget({
     super.key,
     required this.played,
+    this.gestureHint = '',
   });
 
   @override
@@ -88,20 +91,109 @@ class _WaveformWidgetState extends State<WaveformWidget>
 
   @override
   Widget build(BuildContext context) {
+    final c = DegjoColors.of(context);
+    final showHint = widget.gestureHint.isNotEmpty;
+
     return SizedBox(
       width: double.infinity,
       height: _height,
-      child: LayoutBuilder(builder: (ctx, box) {
-        _canvasWidth = box.maxWidth;
-        return CustomPaint(
-          painter: _WavePainter(
-            played: widget.played,
-            phase: _phase,
-            bubbles: List.unmodifiable(_bubbles),
-            canvasHeight: _height,
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: LayoutBuilder(builder: (ctx, box) {
+              _canvasWidth = box.maxWidth;
+              return CustomPaint(
+                painter: _WavePainter(
+                  played: widget.played,
+                  phase: _phase,
+                  bubbles: List.unmodifiable(_bubbles),
+                  canvasHeight: _height,
+                ),
+              );
+            }),
           ),
-        );
-      }),
+
+          // Gesture hint overlay
+          Center(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 180),
+              transitionBuilder: (child, anim) => ScaleTransition(
+                scale: Tween(begin: 0.72, end: 1.0).animate(
+                  CurvedAnimation(parent: anim, curve: Curves.easeOutBack),
+                ),
+                child: FadeTransition(
+                  opacity: CurvedAnimation(parent: anim, curve: Curves.easeOut),
+                  child: child,
+                ),
+              ),
+              child: showHint
+                  ? _HintBadge(
+                      key: ValueKey(widget.gestureHint),
+                      hint: widget.gestureHint,
+                      c: c,
+                    )
+                  : const SizedBox.shrink(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Hint badge ───────────────────────────────────────────────────
+
+class _HintBadge extends StatelessWidget {
+  final String hint;
+  final DegjoColors c;
+  const _HintBadge({super.key, required this.hint, required this.c});
+
+  static const _labels = {
+    '▶': 'duke luajtur',
+    'II': 'ndalo',
+    '+30': 'sekonda',
+    '−30': 'sekonda',
+    '→': 'tjetër',
+    '←': 'mëparshëm',
+    '↺': 'nga fillimi',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final label = _labels[hint];
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      decoration: BoxDecoration(
+        color: c.accent.withOpacity(0.09),
+        borderRadius: BorderRadius.circular(32),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            hint,
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.w800,
+              color: c.accent,
+              letterSpacing: -0.5,
+              height: 1.0,
+            ),
+          ),
+          if (label != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                color: c.accent.withOpacity(0.65),
+                letterSpacing: 0.2,
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

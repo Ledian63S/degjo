@@ -95,8 +95,10 @@ class _PlayerScreenState extends State<PlayerScreen> {
             child: Column(
               children: [
                 _buildHeader(ps, c),
-                WaveformWidget(played: _progress(ps)),
-                _buildHintArea(c),
+                WaveformWidget(
+                  played: _progress(ps),
+                  gestureHint: _gestureHint,
+                ),
                 _buildLessonInfo(ps, c),
                 _buildProgressBar(ps, c),
                 Expanded(child: _buildWhiteCard(ps, c)),
@@ -446,42 +448,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
     );
   }
 
-  // ── HINT AREA (just above Mësimi N) ──────────────────────
-
-  Widget _buildHintArea(DegjoColors c) {
-    final hint = _gestureHint;
-    final isSeek = hint == '+30' || hint == '−30';
-    return SizedBox(
-      height: 44,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 28),
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 180),
-          transitionBuilder: (child, anim) => ScaleTransition(
-            scale: Tween(begin: 0.78, end: 1.0).animate(
-              CurvedAnimation(parent: anim, curve: Curves.easeOutBack),
-            ),
-            child: FadeTransition(
-              opacity: CurvedAnimation(parent: anim, curve: Curves.easeOut),
-              child: child,
-            ),
-          ),
-          child: hint.isEmpty
-              ? const SizedBox.shrink(key: ValueKey('_empty'))
-              : Align(
-                  key: ValueKey(hint),
-                  alignment: isSeek
-                      ? (hint == '+30'
-                          ? Alignment.centerRight
-                          : Alignment.centerLeft)
-                      : Alignment.center,
-                  child: _HintBadge(hint: hint, c: c),
-                ),
-        ),
-      ),
-    );
-  }
-
   // ── GESTURE OVERLAY ───────────────────────────────────────
 
   void _resetGesture() {
@@ -649,59 +615,3 @@ class _PlayerScreenState extends State<PlayerScreen> {
   }
 }
 
-// ── Hint badge ────────────────────────────────────────────────────
-
-class _HintBadge extends StatelessWidget {
-  final String hint;
-  final DegjoColors c;
-  const _HintBadge({required this.hint, required this.c});
-
-  static const _labels = {
-    '▶': 'duke luajtur',
-    'II': 'ndalo',
-    '+30': 'sekonda',
-    '−30': 'sekonda',
-    '→': 'tjetër',
-    '←': 'mëparshëm',
-    '↺': 'nga fillimi',
-  };
-
-  @override
-  Widget build(BuildContext context) {
-    final label = _labels[hint];
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: c.accent.withOpacity(0.09),
-        borderRadius: BorderRadius.circular(28),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            hint,
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              color: c.accent,
-              letterSpacing: -0.5,
-              height: 1.0,
-            ),
-          ),
-          if (label != null) ...[
-            const SizedBox(height: 3),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w500,
-                color: c.accent.withOpacity(0.65),
-                letterSpacing: 0.2,
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
