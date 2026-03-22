@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:just_audio_background/just_audio_background.dart';
 import 'package:audio_session/audio_session.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'r2_service.dart';
@@ -187,7 +188,16 @@ class PlayerState extends ChangeNotifier {
       final url = lesson.audioUrl ??
           'https://pub-5576bc247f054ed182ef2c8aba07d122.r2.dev/${(index + 1).toString().padLeft(3, '0')}.mp3';
 
-      await _player.setUrl(url);
+      await _player.setAudioSource(
+        AudioSource.uri(
+          Uri.parse(url),
+          tag: MediaItem(
+            id: lesson.videoId,
+            title: lesson.title,
+            artUri: Uri.parse('https://pub-5576bc247f054ed182ef2c8aba07d122.r2.dev/app_icon.png'),
+          ),
+        ),
+      );
 
       if (autoPlay) {
         await _player.play();
@@ -202,7 +212,7 @@ class PlayerState extends ChangeNotifier {
       }
     } catch (e, st) {
       debugPrint('loadAndPlay error: $e\n$st');
-      errorMessage = 'Gabim gjatë ngarkimit të mësimit.';
+      errorMessage = 'Gabim: $e';
       voice.speak('Gabim gjatë ngarkimit.');
     } finally {
       _loading = false;

@@ -93,16 +93,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
               ),
             ),
 
-          // ── Per-lesson loading ────────────────────────────────
-          if (ps.isLoading && ps.status != AppStatus.loading)
-            Positioned.fill(
-              child: Center(
-                child: CircularProgressIndicator(
-                  color: c.accent,
-                  strokeWidth: 2,
-                ),
-              ),
-            ),
 
           // ── Per-lesson error banner ───────────────────────────
           if (ps.status != AppStatus.error && ps.errorMessage != null)
