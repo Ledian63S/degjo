@@ -31,9 +31,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
   final Map<int, Offset> _pointerStarts = {};
   final Map<int, Offset> _allStarts = {};
   final Map<int, Offset> _allEnds = {};
+  final Map<int, DateTime> _pointerDownTimes = {};
   final Set<int> _movedPointers = {};
   int _maxPointers = 0;
   DateTime _gestureStart = DateTime.now();
+  static const _ghostThreshold = Duration(milliseconds: 80);
 
   // Tap tracking
   DateTime? _lastTapTime;
@@ -450,6 +452,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
   void _resetGesture() {
     _allStarts.clear();
     _allEnds.clear();
+    _pointerDownTimes.clear();
     _movedPointers.clear();
     _maxPointers = 0;
     _doubleTapPending = false;
@@ -478,6 +481,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
           _maxPointers = 1;
           _gestureStart = DateTime.now();
           _allStarts[e.pointer] = e.position;
+          _pointerDownTimes[e.pointer] = DateTime.now();
 
           // Double-tap: second DOWN within window → fire immediately, swallow UP
           if (_lastTapTime != null &&
@@ -495,6 +499,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
           }
         } else {
           _allStarts[e.pointer] = e.position;
+          _pointerDownTimes[e.pointer] = DateTime.now();
         }
       },
       onPointerMove: (e) {
@@ -515,9 +520,16 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
         if (_showJump) { _resetGesture(); return; }
 
-        final count = _maxPointers;
+        final now = DateTime.now();
+        // Ghost-touch forgiveness: a finger held < 80ms is likely accidental.
+        // Compute effectiveCount excluding those brief touches.
+        final effectiveCount = _allEnds.keys.where((id) {
+          final dt = _pointerDownTimes[id];
+          return dt == null || now.difference(dt) >= _ghostThreshold;
+        }).length.clamp(1, _maxPointers);
+        final count = (_maxPointers == 1) ? 1 : effectiveCount;
         final anyMoved = _movedPointers.isNotEmpty;
-        final elapsed = DateTime.now().difference(_gestureStart);
+        final elapsed = now.difference(_gestureStart);
 
         double avgDx = 0, avgDy = 0;
         int measured = 0;
