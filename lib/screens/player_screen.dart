@@ -557,13 +557,15 @@ class _PlayerScreenState extends State<PlayerScreen> {
             _resetGesture();
             return;
           }
-          if (ps.lessons.isNotEmpty && !ps.isLoading) {
-            _lastSingleTapStart = _gestureStart; // record DOWN time for double-tap detection
+          if (ps.lessons.isNotEmpty) {
+            _lastSingleTapStart = _gestureStart;
             HapticFeedback.lightImpact();
             if (ps.currentLesson != null && ps.duration == Duration.zero) {
-              ps.loadAndPlay(ps.currentIndex);
+              // Only trigger load if not already loading
+              if (!ps.isLoading) ps.loadAndPlay(ps.currentIndex);
               _showHint('▶');
             } else {
+              // togglePlay is safe to call even while loading
               final wasPlaying = ps.isPlaying;
               ps.togglePlay();
               ps.voice.speak(wasPlaying ? 'Ndalo' : 'Duke luajtur');
