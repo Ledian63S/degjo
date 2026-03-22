@@ -6,8 +6,13 @@ import '../theme/degjo_colors.dart';
 
 class OnboardingScreen extends StatefulWidget {
   final VoidCallback onComplete;
+  final VoidCallback onNeverShow;
 
-  const OnboardingScreen({super.key, required this.onComplete});
+  const OnboardingScreen({
+    super.key,
+    required this.onComplete,
+    required this.onNeverShow,
+  });
 
   @override
   State<OnboardingScreen> createState() => _OnboardingScreenState();
@@ -17,6 +22,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     with TickerProviderStateMixin {
   int _step = 0;
   bool _stepDone = false;
+  bool _finished = false;
   late AnimationController _flashCtrl;
   late AnimationController _gestureAnimCtrl;
   late Animation<double> _gestureAnim;
@@ -149,7 +155,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         });
       } else {
         HapticFeedback.mediumImpact();
-        widget.onComplete();
+        setState(() => _finished = true);
       }
     });
   }
@@ -229,6 +235,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
               left: -60,
               child: _blob(260, c.blobPurple, 0.05),
             ),
+
+            // Finish overlay
+            if (_finished) _buildFinishOverlay(c),
 
             // Flash overlay
             AnimatedBuilder(
@@ -459,6 +468,89 @@ class _OnboardingScreenState extends State<OnboardingScreen>
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFinishOverlay(DegjoColors c) {
+    return Positioned.fill(
+      child: Material(
+        color: c.card,
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 36),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Image.asset('assets/app_logo.png', width: 72, height: 72),
+                const SizedBox(height: 28),
+                Text(
+                  'Gati!',
+                  style: TextStyle(
+                    fontSize: 34,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -1.0,
+                    color: c.text,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Ti i di të gjitha gjestet.\nFillo të dëgjosh mësimet.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: c.muted,
+                    height: 1.55,
+                  ),
+                ),
+                const SizedBox(height: 48),
+                // Primary button — start
+                GestureDetector(
+                  onTap: widget.onComplete,
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    decoration: BoxDecoration(
+                      color: c.accent,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Text(
+                      'Fillo',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                // Secondary button — never show again
+                GestureDetector(
+                  onTap: widget.onNeverShow,
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    decoration: BoxDecoration(
+                      color: c.inputBg,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Text(
+                      'Mos e trego sërish',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        color: c.muted,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

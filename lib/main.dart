@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'services/player_state.dart';
 import 'screens/player_screen.dart';
 import 'screens/onboarding_screen.dart';
@@ -61,7 +62,7 @@ class _RootScreen extends StatefulWidget {
 }
 
 class _RootScreenState extends State<_RootScreen> with WidgetsBindingObserver {
-  bool _onboardingDone = false;
+  bool _showOnboarding = false;
   double _overlayOpacity = 0.0;
   Color _overlayColor = Colors.transparent;
 
@@ -69,6 +70,15 @@ class _RootScreenState extends State<_RootScreen> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _loadOnboardingPref();
+  }
+
+  Future<void> _loadOnboardingPref() async {
+    final prefs = await SharedPreferences.getInstance();
+    final neverShow = prefs.getBool('onboarding_never_show') ?? false;
+    if (!neverShow && mounted) {
+      setState(() => _showOnboarding = true);
+    }
   }
 
   @override
@@ -96,15 +106,30 @@ class _RootScreenState extends State<_RootScreen> with WidgetsBindingObserver {
     });
   }
 
-  void _completeOnboarding() => setState(() => _onboardingDone = true);
+  void _completeOnboarding() => setState(() => _showOnboarding = false);
+
+  void _neverShowOnboarding() {
+    SharedPreferences.getInstance()
+        .then((p) => p.setBool('onboarding_never_show', true));
+    setState(() => _showOnboarding = false);
+  }
+
+  void _showTutorial() {
+    SharedPreferences.getInstance()
+        .then((p) => p.setBool('onboarding_never_show', false));
+    setState(() => _showOnboarding = true);
+  }
 
   @override
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        const PlayerScreen(),
-        if (!_onboardingDone)
-          OnboardingScreen(onComplete: _completeOnboarding),
+        PlayerScreen(onShowTutorial: _showTutorial),
+        if (_showOnboarding)
+          OnboardingScreen(
+            onComplete: _completeOnboarding,
+            onNeverShow: _neverShowOnboarding,
+          ),
         IgnorePointer(
           child: AnimatedOpacity(
             opacity: _overlayOpacity,

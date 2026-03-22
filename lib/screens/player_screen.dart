@@ -8,7 +8,8 @@ import '../widgets/waveform_widget.dart';
 import '../theme/degjo_colors.dart';
 
 class PlayerScreen extends StatefulWidget {
-  const PlayerScreen({super.key});
+  final VoidCallback? onShowTutorial;
+  const PlayerScreen({super.key, this.onShowTutorial});
 
   @override
   State<PlayerScreen> createState() => _PlayerScreenState();
@@ -262,6 +263,20 @@ class _PlayerScreenState extends State<PlayerScreen> {
                   counter,
                   style: TextStyle(fontSize: 12, color: c.muted),
                 ),
+              const SizedBox(width: 10),
+              GestureDetector(
+                onTap: widget.onShowTutorial,
+                child: Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: c.inputBg,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.help_outline_rounded,
+                      size: 16, color: c.muted),
+                ),
+              ),
             ],
           ),
         ),
