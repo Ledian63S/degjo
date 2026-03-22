@@ -37,7 +37,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   // Tap tracking
   DateTime? _lastTapTime;
-  Timer? _singleTapTimer;
+  bool _doubleTapPending = false; // second DOWN already fired double-tap; swallow its UP
   static const _doubleTapWindow = Duration(milliseconds: 300);
   // Prevents gesture overlay from eating taps meant for UI buttons
   bool _ignoreNextSingleTap = false;
@@ -55,7 +55,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
   @override
   void dispose() {
     _hintTimer?.cancel();
-    _singleTapTimer?.cancel();
     WakelockPlus.disable();
     super.dispose();
   }
@@ -295,8 +294,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
                     onShowTutorial: widget.onShowTutorial ?? () {},
                   ).then((_) {
                     if (!mounted) return;
-                    _singleTapTimer?.cancel();
-                    _singleTapTimer = null;
                     _lastTapTime = null;
                     _ignoreNextSingleTap = false;
                     if (_pointerStarts.isEmpty) _resetGesture();
@@ -455,6 +452,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
     _allEnds.clear();
     _movedPointers.clear();
     _maxPointers = 0;
+    _doubleTapPending = false;
   }
 
   Widget _buildGestureOverlay(PlayerState ps) {
@@ -480,6 +478,21 @@ class _PlayerScreenState extends State<PlayerScreen> {
           _maxPointers = 1;
           _gestureStart = DateTime.now();
           _allStarts[e.pointer] = e.position;
+
+          // Double-tap: second DOWN within window → fire immediately, swallow UP
+          if (_lastTapTime != null &&
+              DateTime.now().difference(_lastTapTime!) < _doubleTapWindow &&
+              !_ignoreNextSingleTap) {
+            _doubleTapPending = true;
+            _lastTapTime = null;
+            if (ps.lessons.isNotEmpty && !ps.isLoading) {
+              HapticFeedback.mediumImpact();
+              ps.seekTo(Duration.zero);
+              if (!ps.isPlaying) ps.togglePlay();
+              ps.voice.speak('Nga fillimi');
+              _showHint('↺');
+            }
+          }
         } else {
           _allStarts[e.pointer] = e.position;
         }
@@ -520,49 +533,29 @@ class _PlayerScreenState extends State<PlayerScreen> {
         final absDx = avgDx.abs();
         final absDy = avgDy.abs();
 
-        // 1-finger tap → play/pause (deferred); double-tap → repeat from start
+        // 1-finger tap → play/pause (immediate); double-tap fires on second DOWN
         if (count == 1 && !anyMoved && elapsed < _tapMax) {
           if (_ignoreNextSingleTap) {
             _ignoreNextSingleTap = false;
             _resetGesture();
             return;
           }
+          // This UP belongs to the second tap of a double-tap — already handled on DOWN
+          if (_doubleTapPending) {
+            _resetGesture();
+            return;
+          }
           if (ps.lessons.isNotEmpty && !ps.isLoading) {
-            final now = DateTime.now();
-            final isDoubleTap = _lastTapTime != null &&
-                now.difference(_lastTapTime!) < _doubleTapWindow;
-
-            if (isDoubleTap) {
-              // Cancel pending single-tap — no hint flicker, fire double-tap only
-              _singleTapTimer?.cancel();
-              _singleTapTimer = null;
-              _lastTapTime = null;
-              HapticFeedback.mediumImpact();
-              ps.seekTo(Duration.zero);
-              if (!ps.isPlaying) ps.togglePlay();
-              ps.voice.speak('Nga fillimi');
-              _showHint('↺');
+            _lastTapTime = DateTime.now();
+            HapticFeedback.lightImpact();
+            if (ps.currentLesson != null && ps.duration == Duration.zero) {
+              ps.loadAndPlay(ps.currentIndex);
+              _showHint('▶');
             } else {
-              // Confirm tap registered immediately — prevents blind user from
-              // re-tapping (which would trigger an accidental double-tap)
-              HapticFeedback.selectionClick();
-              // Defer single-tap so a second tap within the window can cancel it
-              _lastTapTime = now;
-              _singleTapTimer?.cancel();
-              _singleTapTimer = Timer(_doubleTapWindow, () {
-                if (!mounted) return;
-                final p = context.read<PlayerState>();
-                HapticFeedback.lightImpact();
-                if (p.currentLesson != null && p.duration == Duration.zero) {
-                  p.loadAndPlay(p.currentIndex);
-                  _showHint('▶');
-                } else {
-                  final wasPlaying = p.isPlaying;
-                  p.togglePlay();
-                  p.voice.speak(wasPlaying ? 'Ndalo' : 'Duke luajtur');
-                  _showHint(wasPlaying ? 'II' : '▶');
-                }
-              });
+              final wasPlaying = ps.isPlaying;
+              ps.togglePlay();
+              ps.voice.speak(wasPlaying ? 'Ndalo' : 'Duke luajtur');
+              _showHint(wasPlaying ? 'II' : '▶');
             }
           }
           _resetGesture();
