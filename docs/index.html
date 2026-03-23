@@ -7,6 +7,8 @@
   <meta name="description" content="Një aplikacion audio për mësimin e anglishtes, i dizenjuar për njerëzit me shikim të dëmtuar." />
   <link rel="icon" type="image/png" href="app_logo.png" />
   <link rel="apple-touch-icon" href="app_logo.png" />
+  <meta name="theme-color" content="#080808" media="(prefers-color-scheme: dark)" />
+  <meta name="theme-color" content="#F7F7F7" media="(prefers-color-scheme: light)" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300..900;1,14..32,300..900&display=swap" rel="stylesheet" />
@@ -791,9 +793,19 @@
       );
     }
 
+    const metaDark  = document.querySelector('meta[name="theme-color"][media*="dark"]');
+    const metaLight = document.querySelector('meta[name="theme-color"][media*="light"]');
+
+    function applyTheme(theme) {
+      html.setAttribute('data-theme', theme);
+      const bg = theme === 'dark' ? '#080808' : '#F7F7F7';
+      if (metaDark)  metaDark.content  = theme === 'dark'  ? bg : '#F7F7F7';
+      if (metaLight) metaLight.content = theme === 'light' ? bg : '#080808';
+    }
+
     btn.addEventListener('click', () => {
       const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-      html.setAttribute('data-theme', next);
+      applyTheme(next);
       localStorage.setItem('degjo-theme', next);
     });
 

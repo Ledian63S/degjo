@@ -2,8 +2,6 @@
   <img src="docs/app_logo.png" width="64" alt="Dëgjo logo" />
   <h1>Dëgjo — Mëso Anglisht</h1>
   <p>An iOS audio learning app built for people with visual impairments.<br>285 English lessons, controlled entirely through gestures — no screen required.</p>
-  <a href="https://ledian63s.github.io/degjo"><strong>🌐 ledian63s.github.io/degjo</strong></a>
-  <br /><br />
   <img src="https://img.shields.io/badge/Platform-iOS-black?style=flat-square&logo=apple" alt="iOS" />
   <img src="https://img.shields.io/badge/Flutter-3.x-54C5F8?style=flat-square&logo=flutter" alt="Flutter" />
   <img src="https://img.shields.io/badge/Language-Albanian-E8191C?style=flat-square" alt="Albanian" />
