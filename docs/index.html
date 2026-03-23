@@ -21,9 +21,9 @@
       --red:    #E8191C;
       --red2:   #FF453A;
       --ease:   cubic-bezier(0.4, 0, 0.2, 1);
+      --spring: cubic-bezier(0.16, 1, 0.3, 1);
       --radius: 14px;
       --tr:     0.3s var(--ease);
-      --display: 'Bricolage Grotesque', sans-serif;
     }
 
     [data-theme="dark"] {
@@ -63,7 +63,6 @@
     html {
       scroll-behavior: smooth;
       background: var(--bg);
-      /* Subtle dot grid — no filter, Safari-safe */
       background-image: radial-gradient(circle, var(--dot) 1px, transparent 1px);
       background-size: 28px 28px;
     }
@@ -99,13 +98,15 @@
     .nav-brand {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 9px;
       text-decoration: none;
     }
 
     .nav-brand img {
-      width: 22px; height: 22px;
-      border-radius: 6px;
+      width: 28px; height: 28px;
+      border-radius: 7px;
+      object-fit: contain;
+      flex-shrink: 0;
     }
 
     .nav-brand span {
@@ -131,10 +132,7 @@
 
     .nav-links a:hover { color: var(--text); }
 
-    .nav-right {
-      display: flex;
-      align-items: center;
-    }
+    .nav-right { display: flex; align-items: center; }
 
     .theme-toggle {
       width: 30px; height: 30px;
@@ -150,10 +148,7 @@
       transition: background 0.15s, border-color 0.15s;
     }
 
-    .theme-toggle:hover {
-      background: var(--red-subtle);
-      border-color: var(--border-hover);
-    }
+    .theme-toggle:hover { background: var(--red-subtle); border-color: var(--border-hover); }
 
     .theme-toggle svg {
       width: 13px; height: 13px;
@@ -183,7 +178,6 @@
       overflow: hidden;
     }
 
-    /* Hero ambient glow — replaces fixed blobs, no Safari issues */
     .hero::before {
       content: '';
       position: absolute;
@@ -199,6 +193,7 @@
 
     .hero > * { position: relative; z-index: 1; }
 
+    /* Badge */
     .hero-badge {
       display: inline-flex;
       align-items: center;
@@ -214,7 +209,7 @@
       border-radius: 100px;
       margin-bottom: 36px;
       opacity: 0;
-      animation: fadeUp 0.55s var(--ease) 0.1s forwards;
+      animation: fadeUp 0.55s var(--ease) 0.05s forwards;
     }
 
     .hero-badge-dot {
@@ -224,6 +219,7 @@
       flex-shrink: 0;
     }
 
+    /* ── Headline line-reveal animation ── */
     .hero h1 {
       font-family: 'Bricolage Grotesque', sans-serif;
       font-size: clamp(4rem, 14vw, 8rem);
@@ -231,10 +227,29 @@
       letter-spacing: -3px;
       line-height: 0.92;
       margin-bottom: 28px;
+    }
+
+    /* Each line is an overflow:hidden mask; the inner span slides up through it */
+    .hero-line {
+      display: block;
+      overflow: hidden;
+      padding-bottom: 0.08em;
+      margin-bottom: -0.08em;
+    }
+
+    .hero-line-inner {
+      display: block;
       opacity: 0;
-      animation: fadeUp 0.55s var(--ease) 0.18s forwards;
-      color: var(--text);
-      transition: color var(--tr);
+      transform: translateY(110%);
+      animation: lineReveal 0.8s var(--spring) forwards;
+    }
+
+    .hero-line:nth-child(1) .hero-line-inner { animation-delay: 0.18s; }
+    .hero-line:nth-child(2) .hero-line-inner { animation-delay: 0.32s; }
+    .hero-line:nth-child(3) .hero-line-inner { animation-delay: 0.46s; }
+
+    @keyframes lineReveal {
+      to { opacity: 1; transform: translateY(0); }
     }
 
     .hero h1 em {
@@ -245,6 +260,7 @@
       background-clip: text;
     }
 
+    /* Subtitle & CTA */
     .hero-sub {
       font-size: clamp(0.9rem, 2.2vw, 1.05rem);
       color: var(--text2);
@@ -253,7 +269,7 @@
       line-height: 1.85;
       font-weight: 400;
       opacity: 0;
-      animation: fadeUp 0.55s var(--ease) 0.28s forwards;
+      animation: fadeUp 0.55s var(--ease) 0.58s forwards;
       transition: color var(--tr);
     }
 
@@ -263,7 +279,7 @@
       align-items: center;
       gap: 10px;
       opacity: 0;
-      animation: fadeUp 0.55s var(--ease) 0.38s forwards;
+      animation: fadeUp 0.55s var(--ease) 0.68s forwards;
     }
 
     .btn-store {
@@ -291,13 +307,13 @@
       transition: color var(--tr);
     }
 
-    /* Hero stats */
+    /* Stats */
     .hero-stats {
       display: flex;
       align-items: stretch;
       margin-top: 64px;
       opacity: 0;
-      animation: fadeUp 0.55s var(--ease) 0.48s forwards;
+      animation: fadeUp 0.55s var(--ease) 0.78s forwards;
       border: 1px solid var(--border);
       border-radius: var(--radius);
       background: var(--card);
@@ -306,7 +322,6 @@
     }
 
     .hero-stat { padding: 18px 32px; text-align: center; }
-
     .hero-stat + .hero-stat { border-left: 1px solid var(--border); }
 
     .hero-stat-number {
@@ -350,6 +365,9 @@
       text-transform: uppercase;
       color: var(--red2);
       margin-bottom: 14px;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity 0.5s var(--ease), transform 0.5s var(--ease);
     }
 
     .section-label::before {
@@ -359,6 +377,9 @@
       border-radius: 2px;
     }
 
+    .section-label.visible { opacity: 1; transform: translateY(0); }
+
+    /* Section h2 — line reveal on scroll */
     section h2 {
       font-family: 'Bricolage Grotesque', sans-serif;
       font-size: clamp(2.2rem, 6vw, 3.5rem);
@@ -368,6 +389,27 @@
       margin-bottom: 52px;
       color: var(--text);
       transition: color var(--tr);
+    }
+
+    .h2-line {
+      display: block;
+      overflow: hidden;
+      padding-bottom: 0.06em;
+      margin-bottom: -0.06em;
+    }
+
+    .h2-line-inner {
+      display: block;
+      opacity: 0;
+      transform: translateY(100%);
+      transition: opacity 0.7s var(--spring), transform 0.7s var(--spring);
+    }
+
+    .h2-line:nth-child(2) .h2-line-inner { transition-delay: 0.1s; }
+
+    section h2.visible .h2-line-inner {
+      opacity: 1;
+      transform: translateY(0);
     }
 
     /* ── Features ── */
@@ -527,7 +569,7 @@
     footer p { font-size: 12.5px; color: var(--muted); transition: color var(--tr); }
     footer span { color: var(--red2); }
 
-    /* ── Animations ── */
+    /* ── Shared animations ── */
     @keyframes fadeUp {
       from { opacity: 0; transform: translateY(10px); }
       to   { opacity: 1; transform: translateY(0); }
@@ -590,7 +632,11 @@
       <span class="hero-badge-dot"></span>
       iOS · Shqip · Anglisht
     </p>
-    <h1>Dëgjo.<br><em>Mëso.</em><br>Kupto.</h1>
+    <h1>
+      <span class="hero-line"><span class="hero-line-inner">Dëgjo.</span></span>
+      <span class="hero-line"><span class="hero-line-inner"><em>Mëso.</em></span></span>
+      <span class="hero-line"><span class="hero-line-inner">Kupto.</span></span>
+    </h1>
     <p class="hero-sub">
       285 mësime anglisht — me zë, gjeste dhe pa ekran.
       I ndërtuar për njerëzit me shikim të dëmtuar.
@@ -624,7 +670,10 @@
   <!-- Features -->
   <section id="features">
     <p class="section-label">Veçoritë</p>
-    <h2>Gjithçka me<br>prekje dhe zë.</h2>
+    <h2>
+      <span class="h2-line"><span class="h2-line-inner">Gjithçka me</span></span>
+      <span class="h2-line"><span class="h2-line-inner">prekje dhe zë.</span></span>
+    </h2>
     <div class="features-grid">
       <div class="feature-card">
         <div class="feature-icon">🎧</div>
@@ -662,7 +711,10 @@
   <!-- Gestures -->
   <section id="gestures">
     <p class="section-label">Si funksionon</p>
-    <h2>6 gjeste.<br>Kaq mjafton.</h2>
+    <h2>
+      <span class="h2-line"><span class="h2-line-inner">6 gjeste.</span></span>
+      <span class="h2-line"><span class="h2-line-inner">Kaq mjafton.</span></span>
+    </h2>
     <div class="gestures-list">
       <div class="gesture-row">
         <div class="gesture-tag">1 gisht · Prek</div>
@@ -716,9 +768,9 @@
 
     function applyTheme(theme) {
       html.setAttribute('data-theme', theme);
-      const isDark = theme === 'dark';
-      if (metaDark)  metaDark.content  = isDark ? '#080808' : '#F5F5F5';
-      if (metaLight) metaLight.content = isDark ? '#080808' : '#F5F5F5';
+      const bg = theme === 'dark' ? '#080808' : '#F5F5F5';
+      if (metaDark)  metaDark.content = bg;
+      if (metaLight) metaLight.content = bg;
     }
 
     const stored = localStorage.getItem('degjo-theme');
@@ -741,8 +793,9 @@
       });
     }, { threshold: 0.08 });
 
-    document.querySelectorAll('.feature-card, .gesture-row, .story-card')
-      .forEach(el => observer.observe(el));
+    document.querySelectorAll(
+      '.feature-card, .gesture-row, .story-card, .section-label, section h2'
+    ).forEach(el => observer.observe(el));
   </script>
 
 </body>
