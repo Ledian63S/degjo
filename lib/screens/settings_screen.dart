@@ -67,6 +67,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Scaffold(
       backgroundColor: c.background,
       body: SafeArea(
+        bottom: false,
         child: Column(
           children: [
             // ── Header ──────────────────────────────────────────
@@ -104,7 +105,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 28),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
+                padding: EdgeInsets.only(
+                  left: 20,
+                  right: 20,
+                  bottom: MediaQuery.of(context).padding.bottom + 40,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -336,7 +341,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
 
-                    const SizedBox(height: 40),
                   ],
                 ),
               ),

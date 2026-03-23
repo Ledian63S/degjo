@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Dëgjo — Mëso Anglisht</title>
   <meta name="description" content="Një aplikacion audio për mësimin e anglishtes, i dizenjuar për njerëzit me shikim të dëmtuar." />
+  <link rel="icon" type="image/png" href="app_logo.png" />
+  <link rel="apple-touch-icon" href="app_logo.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300..900;1,14..32,300..900&display=swap" rel="stylesheet" />
@@ -35,7 +37,6 @@
       --tag-color:    #FF6B68;
       --store-bg:     #EBEBEB;
       --store-text:   #080808;
-      --nav-bg:       rgba(8,8,8,0.8);
       --blob1:        rgba(232,25,28,0.07);
       --blob2:        rgba(100,0,200,0.045);
     }
@@ -54,7 +55,6 @@
       --tag-color:    #B80000;
       --store-bg:     #111111;
       --store-text:   #FFFFFF;
-      --nav-bg:       rgba(247,247,247,0.85);
       --blob1:        rgba(232,25,28,0.04);
       --blob2:        rgba(100,0,200,0.025);
     }
@@ -96,19 +96,15 @@
 
     /* ── Nav ── */
     nav {
-      position: sticky;
-      top: 0;
-      z-index: 100;
+      position: relative;
+      z-index: 10;
       display: flex;
       align-items: center;
       justify-content: space-between;
       padding: 0 28px;
       height: 56px;
-      background: var(--nav-bg);
-      backdrop-filter: blur(24px) saturate(180%);
-      -webkit-backdrop-filter: blur(24px) saturate(180%);
-      border-bottom: 1px solid var(--border);
-      transition: background var(--tr), border-color var(--tr);
+      background: transparent;
+      transition: color var(--tr);
     }
 
     .nav-left {
@@ -195,7 +191,7 @@
     .hero {
       position: relative;
       z-index: 1;
-      min-height: calc(100svh - 56px);
+      min-height: 100svh;
       display: flex;
       flex-direction: column;
       align-items: center;
